@@ -3,7 +3,7 @@
 チンチロをベースにした、ブラウザだけで遊べるダイスゲームです。
 
 - 通信なし（Web フロントのみ）
-- 公開先: https://70nanon.github.io/dice-roll-game/
+- 公開先: Cloudflare Pages（`main` が本番。PR / 開発ブランチは Preview Deployment）
 
 ## 遊び方
 
@@ -41,15 +41,28 @@ Node.js 22 以上を想定しています。
 | `src/domain/` | ルール。UI に依存しない純粋なロジックとテスト |
 | `src/ui/` | 画面。ルールの再実装はせず、`src/domain` の reducer を呼ぶだけ |
 | `src/test/` | テスト用のヘルパー（出目を固定する乱数） |
-| `.github/workflows/` | CI（lint / test / build）と GitHub Pages デプロイ |
+| `.github/workflows/` | CI（lint / test / build）。デプロイは Cloudflare Pages の Git 連携 |
 
 ルールを変更するときは `src/domain` とそのテスト、および [実装計画](docs/implementation-plan.md) のルール定義を合わせて更新します。
 
 ## デプロイ
 
-`main` への push で GitHub Pages に自動デプロイされます。初回のみリポジトリ設定が必要です。
+ホスティングは Cloudflare Pages です。GitHub リポジトリを Cloudflare に接続すると、次の流れになります。
 
-1. Settings → Pages → Build and deployment の Source を **GitHub Actions** にする
-2. `main` へのマージ後、Actions の `Deploy to GitHub Pages` が成功したら公開 URL で確認する
+1. ブランチで開発する
+2. Pull Request を作る → Preview Deployment が作成される
+3. Preview URL でブラウザ確認する
+4. `main` へマージする → 本番（Production）へ反映される
 
-ベースパスは `vite.config.ts` の `base: "/dice-roll-game/"` で指定しています。リポジトリ名を変えるときはここも変更が必要です。
+### ビルド設定（Cloudflare Pages）
+
+| 項目 | 値 |
+| --- | --- |
+| Production branch | `main` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Node.js | 22（リポジトリの `.nvmrc`） |
+
+SPA 向けに `public/_redirects` で未知のパスを `index.html` へ返しています。Vite の `base` は `/` です。
+
+初回だけ Cloudflare Dashboard で GitHub 連携が必要です。手順は移行 PR の説明を見てください。GitHub Actions の CI（lint / test / build）はデプロイとは別に残しています。
