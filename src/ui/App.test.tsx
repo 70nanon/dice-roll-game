@@ -19,6 +19,12 @@ async function advanceAutoRoll() {
 
 const button = (name: string) => screen.getByRole("button", { name });
 
+/** ヘッダーの数値は他の表示と値がぶつかるので、項目名から引く。 */
+function scoreboard(label: string): string {
+  const term = screen.getByText(label, { selector: "dt" });
+  return term.nextElementSibling?.textContent ?? "";
+}
+
 function bet(amount: string) {
   fireEvent.change(screen.getByLabelText("掛け金"), { target: { value: amount } });
   fireEvent.click(button("賭ける"));
@@ -37,7 +43,7 @@ describe("App", () => {
   it("最初はベット画面を出す", () => {
     render(<App random={diceRolls()} />);
     expect(screen.getByRole("heading", { name: "チンチロ" })).toBeDefined();
-    expect(screen.getByText("100")).toBeDefined();
+    expect(scoreboard("チップ")).toBe("100");
     expect(
       screen.getByText("掛け金を決めてください（1〜100）"),
     ).toBeDefined();
@@ -90,7 +96,7 @@ describe("App", () => {
       screen.getByText("あなたのピンゾロが親の2の目に勝ち（5倍）"),
     ).toBeDefined();
     expect(screen.getByText("+50 チップ")).toBeDefined();
-    expect(screen.getByText("150")).toBeDefined();
+    expect(scoreboard("チップ")).toBe("150");
   });
 
   it("次のラウンドで盤面が戻る", async () => {
@@ -114,7 +120,7 @@ describe("App", () => {
     fireEvent.click(button("この目で勝負"));
 
     expect(screen.getByText(/チップが尽きました/)).toBeDefined();
-    expect(screen.getByText("0")).toBeDefined();
+    expect(scoreboard("チップ")).toBe("0");
 
     fireEvent.click(button("もう一度遊ぶ"));
     expect(screen.getByText("掛け金を決めてください（1〜100）")).toBeDefined();
