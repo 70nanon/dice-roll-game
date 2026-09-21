@@ -7,7 +7,8 @@
 
 実装はまだ始まっていません。方針・ルール仮定・チケット分解は次を見てください。
 
-- [実装計画](docs/implementation-plan.md)
+- [実装計画](docs/implementation-plan.md) — MVP のスコープ、ルール、技術選定、チケット（MVP は PR 3 本）
+- [追加機能バックログ](docs/backlog.md) — MVP 外の機能候補と、それぞれの前提となる実装
 
 ## ローカル起動
 
