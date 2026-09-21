@@ -108,6 +108,29 @@ export function loserMultiplier(hand: Hand): number {
   return LOSER_MULTIPLIER[hand.kind];
 }
 
+/** 出目を問わない役の呼び名。集計の見出しに使う。 */
+const HAND_KIND_LABEL: Record<HandKind, string> = {
+  pinzoro: "ピンゾロ",
+  arashi: "アラシ",
+  shigoro: "シゴロ",
+  normal: "通常の目",
+  menashi: "目無し",
+  hifumi: "ヒフミ",
+};
+
+export const HAND_KINDS_STRONG_TO_WEAK: readonly HandKind[] = [
+  "pinzoro",
+  "arashi",
+  "shigoro",
+  "normal",
+  "menashi",
+  "hifumi",
+];
+
+export function handKindLabel(kind: HandKind): string {
+  return HAND_KIND_LABEL[kind];
+}
+
 export function handLabel(hand: Hand): string {
   switch (hand.kind) {
     case "pinzoro":
