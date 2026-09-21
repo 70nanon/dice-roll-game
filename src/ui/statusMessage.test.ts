@@ -7,7 +7,7 @@ import { statusMessage } from "./statusMessage";
 
 const NORMAL_2: Dice = [1, 1, 2];
 const NORMAL_5: Dice = [6, 6, 5];
-const SHONBEN: Dice = [1, 2, 4];
+const MENASHI: Dice = [1, 2, 4];
 
 function play(rolls: readonly Dice[], actions: readonly GameAction[]): GameState {
   return actions.reduce(createGameReducer(diceRolls(...rolls)), createInitialState());
@@ -19,7 +19,7 @@ describe("statusMessage", () => {
   });
 
   it("親が役なしのときは振り直しと残り回数を示す", () => {
-    const state = play([SHONBEN], [{ type: "placeBet", bet: 10 }, { type: "roll" }]);
+    const state = play([MENASHI], [{ type: "placeBet", bet: 10 }, { type: "roll" }]);
     expect(statusMessage(state)).toBe("親は役なし。振り直します（残り 2 回）");
   });
 
