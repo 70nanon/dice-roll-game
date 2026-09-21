@@ -9,14 +9,12 @@ export function statusMessage(state: GameState): string {
       return `掛け金を決めてください（${MIN_BET}〜${state.chips}）`;
 
     case "dealerTurn": {
-      const { rollsUsed, hand, decided } = state.dealer;
+      // 親は役が付いた時点で子の手番に移るため、このフェーズに留まるのは役なしのときだけ。
+      const { rollsUsed } = state.dealer;
       if (rollsUsed === 0) {
         return "親がサイコロを振ります";
       }
-      if (!decided) {
-        return `親は役なし。振り直します（残り ${MAX_ROLLS - rollsUsed} 回）`;
-      }
-      return hand ? `親は${handLabel(hand)}で確定` : "親の目が確定";
+      return `親は役なし。振り直します（残り ${MAX_ROLLS - rollsUsed} 回）`;
     }
 
     case "playerTurn": {
