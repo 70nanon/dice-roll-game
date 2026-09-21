@@ -44,8 +44,10 @@ export function App({ random = Math.random }: AppProps = {}) {
     return () => clearTimeout(timer);
   }, [autoRolling, state.dealer.rollsUsed, state.player.rollsUsed]);
 
-  const settlement = state.settlement;
-  const outcomeClass = settlement ? `status status--${settlement.outcome}` : "status";
+  // 試合終了の文言は試合全体の話なので、直前のラウンドの増減や勝敗の色は添えない。
+  // 試合の収支は下の戦績で示す。
+  const roundResult = state.phase === "matchOver" ? null : state.settlement;
+  const statusClass = roundResult ? `status status--${roundResult.outcome}` : "status";
   const matchFinished = state.phase === "matchOver" || state.phase === "gameOver";
   const summary = matchFinished
     ? summarizeMatch(state.history, INITIAL_CHIPS)
@@ -74,11 +76,11 @@ export function App({ random = Math.random }: AppProps = {}) {
         </dl>
       </header>
 
-      <div className={outcomeClass} role="status" aria-live="polite">
+      <div className={statusClass} role="status" aria-live="polite">
         <p className="status__message">{statusMessage(state)}</p>
-        {settlement && settlement.delta !== 0 && (
+        {roundResult && roundResult.delta !== 0 && (
           <p className="status__delta">
-            {settlement.delta > 0 ? `+${settlement.delta}` : settlement.delta} チップ
+            {roundResult.delta > 0 ? `+${roundResult.delta}` : roundResult.delta} チップ
           </p>
         )}
       </div>
