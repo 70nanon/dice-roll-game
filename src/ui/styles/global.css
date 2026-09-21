@@ -1,0 +1,72 @@
+:root {
+  --color-bg: #10241b;
+  --color-surface: #16362a;
+  --color-text: #f4f1e8;
+  --color-accent: #d9a441;
+
+  color-scheme: dark;
+  font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  line-height: 1.7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  display: flex;
+  justify-content: center;
+}
+
+.placeholder {
+  width: 100%;
+  max-width: 40rem;
+  padding: 2rem 1.25rem;
+}
+
+.placeholder h1 {
+  margin: 0 0 0.5rem;
+  color: var(--color-accent);
+  letter-spacing: 0.1em;
+}
+
+.placeholder__lead {
+  margin: 0 0 1.5rem;
+}
+
+.placeholder__rules {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--color-surface);
+  border-radius: 0.5rem;
+}
+
+.placeholder__rules > div + div {
+  margin-top: 0.75rem;
+}
+
+.placeholder__rules dt {
+  font-size: 0.875rem;
+  opacity: 0.75;
+}
+
+.placeholder__rules dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.placeholder__note {
+  margin: 0;
+  font-size: 0.875rem;
+  opacity: 0.75;
+}
+
+code {
+  padding: 0.1em 0.35em;
+  background-color: rgb(255 255 255 / 12%);
+  border-radius: 0.25rem;
+}
