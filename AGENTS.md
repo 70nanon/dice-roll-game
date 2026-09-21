@@ -23,6 +23,8 @@ npm run build   # tsc --noEmit + vite build
 
 - **ルール（`src/domain`）は純関数 + テスト必須**。役判定・配当・進行の変更は、期待値をテストで固定してから実装を直す
 - **UI のロジックは純関数に切り出してテストする**（例: `src/ui/statusMessage.ts`）。表示文言や導出値を JSX の中に埋め込まない
+- **React の配線はコンポーネントテストで覆う**（`src/ui/App.test.tsx`）。ボタンが正しい action を dispatch するか、描画時に落ちないかをここで見る。DOM が必要なテストはファイル先頭に `// @vitest-environment jsdom` を書く
+- 乱数や時間に依存する箇所は、差し替え口を用意してテストから固定する（`App` の `random` prop、`vi.useFakeTimers()`）
 - ルールを変えたら、[実装計画](docs/implementation-plan.md) のルール定義も同じ PR で更新する
 
 ## 3. 画面確認・撮影は原則しない
@@ -38,18 +40,7 @@ npm run build   # tsc --noEmit + vite build
 
 画面確認をしなかった PR には「画面確認なし（[AGENTS.md](AGENTS.md) の方針に沿う）」と一言書く。確認したときだけ画像や動画を貼る。
 
-## 4. 既知の穴（埋まるまでの扱い）
-
-現状、**React コンポーネントの配線を通るテストがない**。`src/domain` と `src/ui/statusMessage.ts` は覆われているが、`App.tsx` やコンポーネントの結線（ボタンが正しい action を dispatch するか、描画時に落ちないか）は型チェックとビルドだけが頼りで、壊れても `npm test` は緑になる。
-
-そのため、コンポーネントの配線を触る変更（`src/ui/**/*.tsx`）では、当面は次のどちらかを行う。
-
-- コンポーネントテストの土台（jsdom + Testing Library）を先に入れて、配線をテストで覆う
-- それが入るまでは、`npm run dev` で該当操作だけ手元で 1 回動かす（撮影は不要）
-
-この穴が埋まったら本節を削除し、第 3 節の原則だけを残す。
-
-## 5. PR の書き方
+## 4. PR の書き方
 
 - 日本語で、何を・なぜ変えたかが差分を追わなくても分かるように書く
 - レビューの読み順（どのファイルから読むか）を書く

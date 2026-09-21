@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer } from "react";
+import type { RandomSource } from "../domain/dice";
 import {
   canSetMatchLength,
   canStand,
@@ -19,8 +20,13 @@ import { statusMessage } from "./statusMessage";
 /** 自動で振り直すまでの待ち時間。出目が変わったことが分かる程度に置く。 */
 const AUTO_ROLL_DELAY_MS = 700;
 
-export function App() {
-  const reducer = useMemo(() => createGameReducer(Math.random), []);
+type AppProps = {
+  /** テストから出目を固定できるようにするための差し替え口 */
+  readonly random?: RandomSource;
+};
+
+export function App({ random = Math.random }: AppProps = {}) {
+  const reducer = useMemo(() => createGameReducer(random), [random]);
   const [state, dispatch] = useReducer(reducer, undefined, () =>
     createInitialState(),
   );
