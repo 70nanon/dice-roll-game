@@ -3,9 +3,11 @@ import { diceRolls } from "../test/diceSequence";
 import type { GameAction, GameState } from "./game";
 import {
   canRoll,
+  canSetMatchLength,
   canStand,
   createGameReducer,
   createInitialState,
+  isFinalRound,
   isValidBet,
   mustReroll,
 } from "./game";
@@ -22,7 +24,7 @@ function play(
 
 const NORMAL_2: Dice = [1, 1, 2];
 const NORMAL_5: Dice = [6, 6, 5];
-const SHONBEN: Dice = [1, 2, 4];
+const MENASHI: Dice = [1, 2, 4];
 const PINZORO: Dice = [1, 1, 1];
 
 describe("isValidBet", () => {
@@ -54,7 +56,7 @@ describe("placeBet", () => {
 
 describe("親（CPU）のターン", () => {
   it("役が付くまで振り、付いたら子のターンに移る", () => {
-    const state = play(diceRolls(SHONBEN, NORMAL_5), [
+    const state = play(diceRolls(MENASHI, NORMAL_5), [
       { type: "placeBet", bet: 10 },
       { type: "roll" },
       { type: "roll" },
@@ -65,7 +67,7 @@ describe("親（CPU）のターン", () => {
   });
 
   it("役なしのうちは親のターンが続く", () => {
-    const state = play(diceRolls(SHONBEN), [
+    const state = play(diceRolls(MENASHI), [
       { type: "placeBet", bet: 10 },
       { type: "roll" },
     ]);
@@ -86,7 +88,7 @@ describe("親（CPU）のターン", () => {
   });
 
   it("3 回振って役なしなら目無しで確定する", () => {
-    const state = play(diceRolls(SHONBEN, SHONBEN, SHONBEN), [
+    const state = play(diceRolls(MENASHI, MENASHI, MENASHI), [
       { type: "placeBet", bet: 10 },
       { type: "roll" },
       { type: "roll" },
@@ -124,7 +126,7 @@ describe("子（プレイヤー）のターン", () => {
   });
 
   it("役が付いていなければ勝負できない", () => {
-    const state = play(diceRolls(NORMAL_2, SHONBEN), [
+    const state = play(diceRolls(NORMAL_2, MENASHI), [
       { type: "placeBet", bet: 10 },
       { type: "roll" },
       { type: "roll" },
@@ -134,7 +136,7 @@ describe("子（プレイヤー）のターン", () => {
   });
 
   it("3 回振り切ると自動で清算される", () => {
-    const state = play(diceRolls(NORMAL_5, SHONBEN, SHONBEN, SHONBEN), [
+    const state = play(diceRolls(NORMAL_5, MENASHI, MENASHI, MENASHI), [
       { type: "placeBet", bet: 10 },
       { type: "roll" },
       { type: "roll" },
@@ -166,7 +168,7 @@ describe("ラウンドの繰り返し", () => {
   });
 
   it("1 ラウンドをテストだけで最後まで進められる", () => {
-    const reducer = createGameReducer(diceRolls(SHONBEN, NORMAL_5, SHONBEN, PINZORO));
+    const reducer = createGameReducer(diceRolls(MENASHI, NORMAL_5, MENASHI, PINZORO));
     let state = createInitialState();
     state = reducer(state, { type: "placeBet", bet: 20 });
     while (state.phase === "dealerTurn") {
@@ -181,6 +183,131 @@ describe("ラウンドの繰り返し", () => {
     expect(state.player.hand).toEqual({ kind: "pinzoro" });
     expect(state.phase).toBe("result");
     expect(state.chips).toBe(200);
+  });
+});
+
+describe("ラウンドの履歴", () => {
+  it("清算のたびに出目と結果を記録する", () => {
+    const state = play(diceRolls(NORMAL_2, NORMAL_5), [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+    ]);
+    expect(state.history).toEqual([
+      {
+        round: 1,
+        bet: 10,
+        dealerDice: NORMAL_2,
+        dealerHand: { kind: "normal", pip: 2 },
+        playerDice: NORMAL_5,
+        playerHand: { kind: "normal", pip: 5 },
+        outcome: "playerWin",
+        delta: 10,
+        chipsAfter: 110,
+      },
+    ]);
+  });
+
+  it("ラウンドをまたいで古い順に積み上がる", () => {
+    const state = play(diceRolls(NORMAL_2, NORMAL_5, NORMAL_5, NORMAL_2), [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+      { type: "nextRound" },
+      { type: "placeBet", bet: 20 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+    ]);
+    expect(state.history.map((record) => record.round)).toEqual([1, 2]);
+    expect(state.history.map((record) => record.delta)).toEqual([10, -20]);
+    expect(state.chips).toBe(90);
+  });
+});
+
+describe("ラウンド数（試合制）", () => {
+  it("既定は無制限で、規定ラウンドでは終わらない", () => {
+    const initial = createInitialState();
+    expect(initial.matchLength).toBeNull();
+    expect(isFinalRound(initial)).toBe(false);
+  });
+
+  it("1 ラウンドも終えていなければラウンド数を変えられる", () => {
+    const state = play(diceRolls(), [{ type: "setMatchLength", matchLength: 5 }]);
+    expect(state.matchLength).toBe(5);
+    expect(canSetMatchLength(state)).toBe(true);
+  });
+
+  it("ラウンドが終わったあとはラウンド数を変えられない", () => {
+    const afterRound = play(diceRolls(NORMAL_2, NORMAL_5), [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+      { type: "nextRound" },
+    ]);
+    expect(canSetMatchLength(afterRound)).toBe(false);
+    expect(
+      play(diceRolls(), [{ type: "setMatchLength", matchLength: 10 }], afterRound),
+    ).toEqual(afterRound);
+  });
+
+  it("規定ラウンドを終えたら試合終了になる", () => {
+    const state = play(
+      diceRolls(NORMAL_2, NORMAL_5, NORMAL_2, NORMAL_5),
+      [
+        { type: "placeBet", bet: 10 },
+        { type: "roll" },
+        { type: "roll" },
+        { type: "stand" },
+        { type: "nextRound" },
+        { type: "placeBet", bet: 10 },
+        { type: "roll" },
+        { type: "roll" },
+        { type: "stand" },
+        { type: "nextRound" },
+      ],
+      createInitialState(100, 2),
+    );
+    expect(state.phase).toBe("matchOver");
+    expect(state.round).toBe(2);
+    expect(state.history).toHaveLength(2);
+    // 試合結果の画面で見せるので、最後の清算は残したまま
+    expect(state.settlement).not.toBeNull();
+  });
+
+  it("試合終了から再開するとラウンド数の設定を引き継ぐ", () => {
+    const over = play(
+      diceRolls(NORMAL_2, NORMAL_5),
+      [
+        { type: "placeBet", bet: 10 },
+        { type: "roll" },
+        { type: "roll" },
+        { type: "stand" },
+        { type: "nextRound" },
+      ],
+      createInitialState(100, 1),
+    );
+    expect(over.phase).toBe("matchOver");
+    const restarted = play(diceRolls(), [{ type: "restart" }], over);
+    expect(restarted).toEqual(createInitialState(100, 1));
+  });
+
+  it("規定ラウンドの前に破産したらゲームオーバーを優先する", () => {
+    const state = play(
+      diceRolls(PINZORO, NORMAL_2),
+      [
+        { type: "placeBet", bet: 10 },
+        { type: "roll" },
+        { type: "roll" },
+        { type: "stand" },
+      ],
+      createInitialState(10, 5),
+    );
+    expect(state.phase).toBe("gameOver");
+    expect(state.history).toHaveLength(1);
   });
 });
 
