@@ -64,16 +64,16 @@ describe("settleRound", () => {
       delta: 20,
     },
     {
-      title: "自分がションベンなら 1 倍払い",
-      player: { kind: "shonben" },
+      title: "自分が目無しなら 1 倍払い",
+      player: { kind: "menashi" },
       dealer: { kind: "normal", pip: 1 },
       outcome: "dealerWin",
       multiplier: 1,
       delta: -10,
     },
     {
-      title: "ションベンはヒフミより強い",
-      player: { kind: "shonben" },
+      title: "目無しはヒフミより強い",
+      player: { kind: "menashi" },
       dealer: { kind: "hifumi" },
       outcome: "playerWin",
       multiplier: 2,
@@ -136,8 +136,8 @@ describe("settleRound", () => {
   });
 
   it("勝敗の理由を日本語で返す", () => {
-    expect(settle({ kind: "pinzoro" }, { kind: "shonben" }).reason).toBe(
-      "あなたのピンゾロが親のションベンに勝ち（5倍）",
+    expect(settle({ kind: "pinzoro" }, { kind: "menashi" }).reason).toBe(
+      "あなたのピンゾロが親の目無しに勝ち（5倍）",
     );
     expect(settle({ kind: "normal", pip: 1 }, { kind: "shigoro" }).reason).toBe(
       "親のシゴロにあなたの1の目が負け（2倍）",

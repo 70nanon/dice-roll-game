@@ -12,17 +12,17 @@ export type Hand =
   /** 1-2-3（順不同） */
   | { readonly kind: "hifumi" }
   /** 役なし */
-  | { readonly kind: "shonben" };
+  | { readonly kind: "menashi" };
 
 export type HandKind = Hand["kind"];
 
-/** 強い順。ヒフミはションベンより下に置く。 */
+/** 強い順。ヒフミは目無しより下に置く。 */
 const HAND_RANK: Record<HandKind, number> = {
   pinzoro: 5,
   arashi: 4,
   shigoro: 3,
   normal: 2,
-  shonben: 1,
+  menashi: 1,
   hifumi: 0,
 };
 
@@ -32,7 +32,7 @@ const WINNER_MULTIPLIER: Record<HandKind, number> = {
   arashi: 3,
   shigoro: 2,
   normal: 1,
-  shonben: 1,
+  menashi: 1,
   hifumi: 1,
 };
 
@@ -42,7 +42,7 @@ const LOSER_MULTIPLIER: Record<HandKind, number> = {
   arashi: 1,
   shigoro: 1,
   normal: 1,
-  shonben: 1,
+  menashi: 1,
   hifumi: 2,
 };
 
@@ -68,15 +68,15 @@ export function judgeHand(dice: Dice): Hand {
   if (mid === high) {
     return { kind: "normal", pip: low };
   }
-  return { kind: "shonben" };
+  return { kind: "menashi" };
 }
 
 /**
- * 役が付いたか。ションベンだけが「まだ何も出ていない」扱いで、
+ * 役が付いたか。目無しだけが「まだ何も出ていない」扱いで、
  * 残り回数があれば自動で振り直す。
  */
 export function hasHand(hand: Hand): boolean {
-  return hand.kind !== "shonben";
+  return hand.kind !== "menashi";
 }
 
 /** 正なら a が強い。0 はあいこ。 */
@@ -120,7 +120,7 @@ export function handLabel(hand: Hand): string {
       return `${hand.pip}の目`;
     case "hifumi":
       return "ヒフミ";
-    case "shonben":
-      return "ションベン";
+    case "menashi":
+      return "目無し";
   }
 }

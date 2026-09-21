@@ -85,14 +85,14 @@ describe("親（CPU）のターン", () => {
     expect(play(diceRolls(), [{ type: "roll" }], stuckOnDealer)).toEqual(stuckOnDealer);
   });
 
-  it("3 回振って役なしならションベンで確定する", () => {
+  it("3 回振って役なしなら目無しで確定する", () => {
     const state = play(diceRolls(SHONBEN, SHONBEN, SHONBEN), [
       { type: "placeBet", bet: 10 },
       { type: "roll" },
       { type: "roll" },
       { type: "roll" },
     ]);
-    expect(state.dealer.hand).toEqual({ kind: "shonben" });
+    expect(state.dealer.hand).toEqual({ kind: "menashi" });
     expect(state.dealer.decided).toBe(true);
     expect(state.phase).toBe("playerTurn");
   });
@@ -142,7 +142,7 @@ describe("子（プレイヤー）のターン", () => {
       { type: "roll" },
     ]);
     expect(state.player.rollsUsed).toBe(3);
-    expect(state.player.hand).toEqual({ kind: "shonben" });
+    expect(state.player.hand).toEqual({ kind: "menashi" });
     expect(state.phase).toBe("result");
     expect(state.chips).toBe(90);
   });

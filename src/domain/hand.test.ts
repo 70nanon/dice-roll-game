@@ -26,10 +26,10 @@ describe("judgeHand", () => {
     [[3, 6, 6], { kind: "normal", pip: 3 }],
     [[1, 1, 6], { kind: "normal", pip: 6 }],
     // ペアもゾロ目も並びもない
-    [[1, 2, 4], { kind: "shonben" }],
-    [[2, 3, 5], { kind: "shonben" }],
-    [[3, 4, 6], { kind: "shonben" }],
-    [[1, 3, 5], { kind: "shonben" }],
+    [[1, 2, 4], { kind: "menashi" }],
+    [[2, 3, 5], { kind: "menashi" }],
+    [[3, 4, 6], { kind: "menashi" }],
+    [[1, 3, 5], { kind: "menashi" }],
   ];
 
   it.each(cases)("%j は %j と判定する", (dice, expected) => {
@@ -52,8 +52,8 @@ describe("judgeHand", () => {
 });
 
 describe("hasHand", () => {
-  it("ションベン以外は役が付いたものとして扱う", () => {
-    expect(hasHand({ kind: "shonben" })).toBe(false);
+  it("目無し以外は役が付いたものとして扱う", () => {
+    expect(hasHand({ kind: "menashi" })).toBe(false);
     expect(hasHand({ kind: "hifumi" })).toBe(true);
     expect(hasHand({ kind: "normal", pip: 1 })).toBe(true);
     expect(hasHand({ kind: "pinzoro" })).toBe(true);
@@ -61,7 +61,7 @@ describe("hasHand", () => {
 });
 
 describe("compareHands", () => {
-  it("役の強さは ピンゾロ > アラシ > シゴロ > 通常の目 > ションベン > ヒフミ", () => {
+  it("役の強さは ピンゾロ > アラシ > シゴロ > 通常の目 > 目無し > ヒフミ", () => {
     const strongToWeak: readonly Hand[] = [
       { kind: "pinzoro" },
       { kind: "arashi", value: 6 },
@@ -69,7 +69,7 @@ describe("compareHands", () => {
       { kind: "shigoro" },
       { kind: "normal", pip: 6 },
       { kind: "normal", pip: 1 },
-      { kind: "shonben" },
+      { kind: "menashi" },
       { kind: "hifumi" },
     ];
 
@@ -96,7 +96,7 @@ describe("compareHands", () => {
   it("同じ役・同じ目はあいこ", () => {
     expect(compareHands({ kind: "normal", pip: 3 }, { kind: "normal", pip: 3 })).toBe(0);
     expect(compareHands({ kind: "pinzoro" }, { kind: "pinzoro" })).toBe(0);
-    expect(compareHands({ kind: "shonben" }, { kind: "shonben" })).toBe(0);
+    expect(compareHands({ kind: "menashi" }, { kind: "menashi" })).toBe(0);
     expect(compareHands({ kind: "hifumi" }, { kind: "hifumi" })).toBe(0);
   });
 });
@@ -111,7 +111,7 @@ describe("倍率", () => {
 
   it("ヒフミだけが 2 倍払い", () => {
     expect(loserMultiplier({ kind: "hifumi" })).toBe(2);
-    expect(loserMultiplier({ kind: "shonben" })).toBe(1);
+    expect(loserMultiplier({ kind: "menashi" })).toBe(1);
     expect(loserMultiplier({ kind: "normal", pip: 2 })).toBe(1);
   });
 });
@@ -123,6 +123,6 @@ describe("handLabel", () => {
     expect(handLabel({ kind: "shigoro" })).toBe("シゴロ");
     expect(handLabel({ kind: "normal", pip: 2 })).toBe("2の目");
     expect(handLabel({ kind: "hifumi" })).toBe("ヒフミ");
-    expect(handLabel({ kind: "shonben" })).toBe("ションベン");
+    expect(handLabel({ kind: "menashi" })).toBe("目無し");
   });
 });
