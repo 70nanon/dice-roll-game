@@ -54,9 +54,14 @@ export function App() {
         </dl>
       </header>
 
-      <p className={outcomeClass} role="status" aria-live="polite">
-        {statusMessage(state)}
-      </p>
+      <div className={outcomeClass} role="status" aria-live="polite">
+        <p className="status__message">{statusMessage(state)}</p>
+        {settlement && settlement.delta !== 0 && (
+          <p className="status__delta">
+            {settlement.delta > 0 ? `+${settlement.delta}` : settlement.delta} チップ
+          </p>
+        )}
+      </div>
 
       <div className="app__table">
         <RollPanel
@@ -121,12 +126,6 @@ export function App() {
           </button>
         )}
       </div>
-
-      {settlement && settlement.delta !== 0 && state.phase !== "betting" && (
-        <p className="delta">
-          {settlement.delta > 0 ? `+${settlement.delta}` : settlement.delta} チップ
-        </p>
-      )}
     </main>
   );
 }

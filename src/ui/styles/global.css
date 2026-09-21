@@ -71,12 +71,36 @@ body {
 }
 
 .status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 0.75rem;
   margin: 0 0 1rem;
   padding: 0.75rem 1rem;
   background-color: var(--color-surface-strong);
   border-left: 4px solid var(--color-accent);
   border-radius: 0.25rem;
   min-height: 3.25rem;
+}
+
+.status__message {
+  margin: 0;
+}
+
+.status__delta {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.status--playerWin .status__delta {
+  color: var(--color-win);
+}
+
+.status--dealerWin .status__delta {
+  color: var(--color-lose);
 }
 
 .status--playerWin {
@@ -264,11 +288,4 @@ body {
 
 .bet .button--primary {
   align-self: flex-start;
-}
-
-.delta {
-  margin: 1rem 0 0;
-  font-size: 1.125rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
