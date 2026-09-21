@@ -19,8 +19,9 @@
 
 ## ドキュメント
 
-- [実装計画](docs/implementation-plan.md) — MVP のスコープ、ルール、技術選定、チケット
-- [追加機能バックログ](docs/backlog.md) — MVP 外の機能候補と、それぞれの前提となる実装
+- [ローグライト化ロードマップ](docs/roadmap.md) — 今後どの順で発展させるか（Phase 0〜5）
+- [実装計画](docs/implementation-plan.md) — MVP のスコープ、ルール定義、技術選定、チケット
+- [追加機能バックログ](docs/backlog.md) — ロードマップ外の機能候補と、それぞれの前提となる実装
 
 ## ローカル開発
 
