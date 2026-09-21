@@ -8,7 +8,8 @@ export default defineConfig({
   base: "/dice-roll-game/",
   plugins: [react()],
   test: {
+    // 既定は node。DOM が必要なテストはファイル先頭で @vitest-environment jsdom を宣言する
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });
