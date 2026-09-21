@@ -39,6 +39,21 @@ function statValue(rootSelector: string, label: string): string {
 const scoreboard = (label: string) => statValue(".scoreboard", label);
 const summaryStat = (label: string) => statValue(".summary__stats", label);
 
+/** 見出しからパネルを特定して、投ごとの出目履歴を読む。出ていなければ null。 */
+function panelLog(title: string): readonly string[] | null {
+  const panel = screen.getByRole("heading", { name: title }).closest(".panel");
+  if (panel === null) {
+    throw new Error(`${title} のパネルが見つかりません`);
+  }
+  const log = panel.querySelector(".panel__log");
+  if (log === null) {
+    return null;
+  }
+  return Array.from(log.querySelectorAll("li"), (item) =>
+    Array.from(item.querySelectorAll("span"), (span) => span.textContent).join(" "),
+  );
+}
+
 function bet(amount: string) {
   fireEvent.change(screen.getByLabelText("掛け金"), { target: { value: amount } });
   fireEvent.click(button("賭ける"));
@@ -111,6 +126,35 @@ describe("App", () => {
 
     await advanceAutoRoll();
     expect(screen.getByText(/2の目。この目で勝負するか/)).toBeDefined();
+  });
+
+  it("振り直すと投ごとの出目が並ぶ", async () => {
+    render(<App random={diceRolls(NORMAL_5, MENASHI, NORMAL_2)} />);
+    bet("10");
+    await advanceAutoRoll();
+
+    // 1 投しかしていない親には履歴を出さない
+    expect(panelLog("親（CPU）")).toBeNull();
+
+    fireEvent.click(button("振る"));
+    await advanceAutoRoll();
+
+    expect(panelLog("あなた")).toEqual([
+      "1 投目 1-2-4 目無し",
+      "2 投目 1-1-2 2の目",
+    ]);
+  });
+
+  it("次のラウンドに入ると投ごとの出目は消える", async () => {
+    render(<App random={diceRolls(NORMAL_5, MENASHI, NORMAL_2)} />);
+    bet("10");
+    await advanceAutoRoll();
+    fireEvent.click(button("振る"));
+    await advanceAutoRoll();
+    fireEvent.click(button("この目で勝負"));
+    fireEvent.click(button("次のラウンド"));
+
+    expect(panelLog("あなた")).toBeNull();
   });
 
   it("この目で勝負すると清算してチップが動く", async () => {
