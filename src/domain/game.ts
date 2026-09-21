@@ -24,13 +24,23 @@ export type Phase =
   /** チップが尽きた */
   | "gameOver";
 
+/** 1 投の記録。 */
+export type Roll = {
+  readonly dice: Dice;
+  readonly hand: Hand;
+};
+
 export type RollState = {
-  readonly dice: Dice | null;
-  readonly hand: Hand | null;
-  readonly rollsUsed: number;
+  /** このラウンドで振った順。最後が今の出目。空ならまだ振っていない */
+  readonly rolls: readonly Roll[];
   /** 役が付いた、または 3 回振り切って結果が動かない状態 */
   readonly decided: boolean;
 };
+
+/** 今の出目。まだ振っていなければ null。 */
+export function latestRoll(roll: RollState): Roll | null {
+  return roll.rolls.at(-1) ?? null;
+}
 
 /** 終わったラウンドの記録。出目もそのまま残す。 */
 export type RoundRecord = {
@@ -69,9 +79,7 @@ export type GameAction =
   | { readonly type: "restart" };
 
 const EMPTY_ROLL: RollState = {
-  dice: null,
-  hand: null,
-  rollsUsed: 0,
+  rolls: [],
   decided: false,
 };
 
@@ -111,7 +119,7 @@ export function canRoll(state: GameState): boolean {
     return !state.dealer.decided;
   }
   if (state.phase === "playerTurn") {
-    return state.player.rollsUsed < MAX_ROLLS;
+    return state.player.rolls.length < MAX_ROLLS;
   }
   return false;
 }
@@ -122,10 +130,10 @@ export function canStand(state: GameState): boolean {
 
 /** 役なしなので、残り回数の範囲で振り直すしかない状態。 */
 export function mustReroll(state: GameState): boolean {
-  return canRoll(state) && !currentRoll(state).decided;
+  return canRoll(state) && !activeRollState(state).decided;
 }
 
-function currentRoll(state: GameState): RollState {
+function activeRollState(state: GameState): RollState {
   return state.phase === "dealerTurn" ? state.dealer : state.player;
 }
 
@@ -173,12 +181,12 @@ export function createGameReducer(
         }
 
         if (state.phase === "playerTurn") {
-          if (state.player.rollsUsed >= MAX_ROLLS) {
+          if (state.player.rolls.length >= MAX_ROLLS) {
             return state;
           }
           const player = applyRoll(state.player, random);
           // 3 回振り切ったら選ぶ余地がないので、そのまま清算する。
-          if (player.rollsUsed >= MAX_ROLLS) {
+          if (player.rolls.length >= MAX_ROLLS) {
             return settle({ ...state, player });
           }
           return { ...state, player };
@@ -226,18 +234,17 @@ export function createGameReducer(
 function applyRoll(roll: RollState, random: RandomSource): RollState {
   const dice = rollDice(random);
   const hand = judgeHand(dice);
-  const rollsUsed = roll.rollsUsed + 1;
+  const rolls = [...roll.rolls, { dice, hand }];
   return {
-    dice,
-    hand,
-    rollsUsed,
-    decided: hasHand(hand) || rollsUsed >= MAX_ROLLS,
+    rolls,
+    decided: hasHand(hand) || rolls.length >= MAX_ROLLS,
   };
 }
 
 function settle(state: GameState): GameState {
-  const { player, dealer } = state;
-  if (!player.dice || !player.hand || !dealer.dice || !dealer.hand) {
+  const player = latestRoll(state.player);
+  const dealer = latestRoll(state.dealer);
+  if (!player || !dealer) {
     return state;
   }
   const settlement = settleRound({

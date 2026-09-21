@@ -34,7 +34,9 @@ export function App({ random = Math.random }: AppProps = {}) {
   // 親のターンは全自動。子は役なしのときだけ自動で振り直す（最初の 1 回は手動）。
   const autoRolling =
     state.phase === "dealerTurn" ||
-    (state.phase === "playerTurn" && state.player.rollsUsed > 0 && mustReroll(state));
+    (state.phase === "playerTurn" &&
+      state.player.rolls.length > 0 &&
+      mustReroll(state));
 
   useEffect(() => {
     if (!autoRolling) {
@@ -42,7 +44,7 @@ export function App({ random = Math.random }: AppProps = {}) {
     }
     const timer = setTimeout(() => dispatch({ type: "roll" }), AUTO_ROLL_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [autoRolling, state.dealer.rollsUsed, state.player.rollsUsed]);
+  }, [autoRolling, state.dealer.rolls.length, state.player.rolls.length]);
 
   // 試合終了の文言は試合全体の話なので、直前のラウンドの増減や勝敗の色は添えない。
   // 試合の収支は下の戦績で示す。
@@ -124,7 +126,7 @@ export function App({ random = Math.random }: AppProps = {}) {
               disabled={autoRolling}
               onClick={() => dispatch({ type: "roll" })}
             >
-              {state.player.rollsUsed === 0 ? "振る" : "振り直す"}
+              {state.player.rolls.length === 0 ? "振る" : "振り直す"}
             </button>
             {canStand(state) && (
               <button
