@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { isValidBet, MIN_BET } from "../../domain/game";
+import { MIN_BET } from "../../domain/game";
 
 type BetFormProps = {
-  readonly chips: number;
+  /** 賭けられる上限。自分と親のチップの小さい方 */
+  readonly max: number;
   readonly onSubmit: (bet: number) => void;
 };
 
 const PRESETS = [10, 50] as const;
 
-export function BetForm({ chips, onSubmit }: BetFormProps) {
-  const [input, setInput] = useState(String(Math.min(10, chips)));
+export function BetForm({ max, onSubmit }: BetFormProps) {
+  const [input, setInput] = useState(String(Math.min(10, max)));
   const bet = Number(input);
-  const valid = isValidBet(chips, bet);
+  const valid = Number.isInteger(bet) && bet >= MIN_BET && bet <= max;
 
   return (
     <form
@@ -33,13 +34,13 @@ export function BetForm({ chips, onSubmit }: BetFormProps) {
           type="number"
           inputMode="numeric"
           min={MIN_BET}
-          max={chips}
+          max={max}
           step={1}
           value={input}
           onChange={(event) => setInput(event.target.value)}
           aria-describedby="bet-hint"
         />
-        {PRESETS.filter((preset) => preset <= chips).map((preset) => (
+        {PRESETS.filter((preset) => preset <= max).map((preset) => (
           <button
             className="button button--ghost"
             key={preset}
@@ -52,16 +53,16 @@ export function BetForm({ chips, onSubmit }: BetFormProps) {
         <button
           className="button button--ghost"
           type="button"
-          onClick={() => setInput(String(chips))}
+          onClick={() => setInput(String(max))}
         >
-          全額
+          上限
         </button>
       </div>
 
       <p className="bet__hint" id="bet-hint">
         {valid
           ? `${bet} チップを賭けます`
-          : `${MIN_BET}〜${chips} の整数を入力してください`}
+          : `${MIN_BET}〜${max} の整数を入力してください`}
       </p>
 
       <button className="button button--primary" type="submit" disabled={!valid}>

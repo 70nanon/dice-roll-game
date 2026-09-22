@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useReducer } from "react";
 import type { RandomSource } from "../domain/dice";
 import {
-  canSetMatchLength,
   canStand,
   createGameReducer,
   createInitialState,
   INITIAL_CHIPS,
-  isFinalRound,
+  maxBet,
   mustReroll,
 } from "../domain/game";
 import { summarizeMatch } from "../domain/stats";
 import { BetForm } from "./components/BetForm";
 import { HistoryList } from "./components/HistoryList";
-import { MatchLengthPicker } from "./components/MatchLengthPicker";
 import { MatchSummaryPanel } from "./components/MatchSummaryPanel";
 import { RollPanel } from "./components/RollPanel";
 import { statusMessage } from "./statusMessage";
@@ -46,12 +44,10 @@ export function App({ random = Math.random }: AppProps = {}) {
     return () => clearTimeout(timer);
   }, [autoRolling, state.dealer.rolls.length, state.player.rolls.length]);
 
-  // 試合終了の文言は試合全体の話なので、直前のラウンドの増減や勝敗の色は添えない。
-  // 試合の収支は下の戦績で示す。
-  const roundResult = state.phase === "matchOver" ? null : state.settlement;
+  const roundResult = state.settlement;
   const statusClass = roundResult ? `status status--${roundResult.outcome}` : "status";
-  const matchFinished = state.phase === "matchOver" || state.phase === "gameOver";
-  const summary = matchFinished
+  const battleFinished = state.phase === "battleWon" || state.phase === "gameOver";
+  const summary = battleFinished
     ? summarizeMatch(state.history, INITIAL_CHIPS)
     : null;
 
@@ -61,15 +57,16 @@ export function App({ random = Math.random }: AppProps = {}) {
         <h1 className="app__title">チンチロ</h1>
         <dl className="scoreboard">
           <div>
-            <dt>チップ</dt>
+            <dt>自分のチップ</dt>
             <dd>{state.chips}</dd>
           </div>
           <div>
+            <dt>親のチップ</dt>
+            <dd>{state.dealerChips}</dd>
+          </div>
+          <div>
             <dt>ラウンド</dt>
-            <dd>
-              {state.round}
-              {state.matchLength !== null && ` / ${state.matchLength}`}
-            </dd>
+            <dd>{state.round}</dd>
           </div>
           <div>
             <dt>掛け金</dt>
@@ -102,20 +99,10 @@ export function App({ random = Math.random }: AppProps = {}) {
 
       <div className="app__actions">
         {state.phase === "betting" && (
-          <>
-            {canSetMatchLength(state) && (
-              <MatchLengthPicker
-                value={state.matchLength}
-                onChange={(matchLength) =>
-                  dispatch({ type: "setMatchLength", matchLength })
-                }
-              />
-            )}
-            <BetForm
-              chips={state.chips}
-              onSubmit={(bet) => dispatch({ type: "placeBet", bet })}
-            />
-          </>
+          <BetForm
+            max={maxBet(state.chips, state.dealerChips)}
+            onSubmit={(bet) => dispatch({ type: "placeBet", bet })}
+          />
         )}
 
         {state.phase === "playerTurn" && (
@@ -146,11 +133,11 @@ export function App({ random = Math.random }: AppProps = {}) {
             type="button"
             onClick={() => dispatch({ type: "nextRound" })}
           >
-            {isFinalRound(state) ? "試合結果を見る" : "次のラウンド"}
+            次のラウンド
           </button>
         )}
 
-        {matchFinished && (
+        {battleFinished && (
           <button
             className="button button--primary"
             type="button"

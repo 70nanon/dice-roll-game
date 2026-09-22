@@ -53,6 +53,25 @@ describe("statusMessage", () => {
     );
   });
 
+  it("ベット中の上限は親のチップでも決まる", () => {
+    expect(statusMessage(createInitialState(100, 30))).toBe(
+      "掛け金を決めてください（1〜30）",
+    );
+  });
+
+  it("撃破は親のチップが尽きたことを添える", () => {
+    const reducer = createGameReducer(diceRolls(NORMAL_2, NORMAL_5));
+    let state = createInitialState(100, 10);
+    state = reducer(state, { type: "placeBet", bet: 10 });
+    state = reducer(state, { type: "roll" });
+    state = reducer(state, { type: "roll" });
+    state = reducer(state, { type: "stand" });
+    expect(state.phase).toBe("battleWon");
+    expect(statusMessage(state)).toBe(
+      "あなたの5の目が親の2の目に勝ち（1倍）。親のチップが尽きました。撃破！",
+    );
+  });
+
   it("ゲームオーバーはチップが尽きたことを添える", () => {
     const reducer = createGameReducer(diceRolls(NORMAL_5, NORMAL_2));
     let state = createInitialState(10);

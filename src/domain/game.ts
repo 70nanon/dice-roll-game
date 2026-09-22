@@ -6,22 +6,19 @@ import type { Outcome, Settlement } from "./payout";
 import { settleRound } from "./payout";
 
 export const INITIAL_CHIPS = 100;
+/** 親（CPU）の初期チップ。これを削り切ったら撃破。 */
+export const DEALER_INITIAL_CHIPS = 100;
 export const MAX_ROLLS = 3;
 export const MIN_BET = 1;
-
-/** 試合のラウンド数。null は無制限（破産するまで）。 */
-export type MatchLength = number | null;
-
-export const MATCH_LENGTH_OPTIONS: readonly MatchLength[] = [null, 5, 10];
 
 export type Phase =
   | "betting"
   | "dealerTurn"
   | "playerTurn"
   | "result"
-  /** 規定ラウンドを終えた */
-  | "matchOver"
-  /** チップが尽きた */
+  /** 親のチップが尽きた（撃破） */
+  | "battleWon"
+  /** 自分のチップが尽きた */
   | "gameOver";
 
 /** 1 投の記録。 */
@@ -58,8 +55,10 @@ export type RoundRecord = {
 export type GameState = {
   readonly phase: Phase;
   readonly round: number;
-  readonly matchLength: MatchLength;
+  /** 自分のチップ */
   readonly chips: number;
+  /** 親（CPU）のチップ */
+  readonly dealerChips: number;
   readonly bet: number;
   readonly dealer: RollState;
   readonly player: RollState;
@@ -69,7 +68,6 @@ export type GameState = {
 };
 
 export type GameAction =
-  | { readonly type: "setMatchLength"; readonly matchLength: MatchLength }
   | { readonly type: "placeBet"; readonly bet: number }
   /** 現在の手番が 3 個振る */
   | { readonly type: "roll" }
@@ -85,13 +83,13 @@ const EMPTY_ROLL: RollState = {
 
 export function createInitialState(
   chips: number = INITIAL_CHIPS,
-  matchLength: MatchLength = null,
+  dealerChips: number = DEALER_INITIAL_CHIPS,
 ): GameState {
   return {
     phase: "betting",
     round: 1,
-    matchLength,
     chips,
+    dealerChips,
     bet: 0,
     dealer: EMPTY_ROLL,
     player: EMPTY_ROLL,
@@ -100,18 +98,19 @@ export function createInitialState(
   };
 }
 
-/** ラウンド数の変更は、1 ラウンドも終えていない間だけ受け付ける。 */
-export function canSetMatchLength(state: GameState): boolean {
-  return state.phase === "betting" && state.history.length === 0;
+/** 賭けられる上限。どちらかが払えない額は賭けられない。 */
+export function maxBet(chips: number, dealerChips: number): number {
+  return Math.min(chips, dealerChips);
 }
 
-/** このラウンドで規定数に達するか。 */
-export function isFinalRound(state: GameState): boolean {
-  return state.matchLength !== null && state.round >= state.matchLength;
-}
-
-export function isValidBet(chips: number, bet: number): boolean {
-  return Number.isInteger(bet) && bet >= MIN_BET && bet <= chips;
+export function isValidBet(
+  chips: number,
+  dealerChips: number,
+  bet: number,
+): boolean {
+  return (
+    Number.isInteger(bet) && bet >= MIN_BET && bet <= maxBet(chips, dealerChips)
+  );
 }
 
 export function canRoll(state: GameState): boolean {
@@ -145,15 +144,11 @@ export function createGameReducer(
 ): (state: GameState, action: GameAction) => GameState {
   return function reducer(state: GameState, action: GameAction): GameState {
     switch (action.type) {
-      case "setMatchLength": {
-        if (!canSetMatchLength(state)) {
-          return state;
-        }
-        return { ...state, matchLength: action.matchLength };
-      }
-
       case "placeBet": {
-        if (state.phase !== "betting" || !isValidBet(state.chips, action.bet)) {
+        if (
+          state.phase !== "betting" ||
+          !isValidBet(state.chips, state.dealerChips, action.bet)
+        ) {
           return state;
         }
         return {
@@ -206,9 +201,6 @@ export function createGameReducer(
         if (state.phase !== "result") {
           return state;
         }
-        if (isFinalRound(state)) {
-          return { ...state, phase: "matchOver" };
-        }
         return {
           ...state,
           phase: "betting",
@@ -221,11 +213,10 @@ export function createGameReducer(
       }
 
       case "restart": {
-        if (state.phase !== "gameOver" && state.phase !== "matchOver") {
+        if (state.phase !== "gameOver" && state.phase !== "battleWon") {
           return state;
         }
-        // ラウンド数の設定は引き継ぐ
-        return createInitialState(INITIAL_CHIPS, state.matchLength);
+        return createInitialState();
       }
     }
   };
@@ -251,7 +242,8 @@ function settle(state: GameState): GameState {
     playerHand: player.hand,
     dealerHand: dealer.hand,
     bet: state.bet,
-    chips: state.chips,
+    playerChips: state.chips,
+    dealerChips: state.dealerChips,
   });
   const record: RoundRecord = {
     round: state.round,
@@ -262,13 +254,25 @@ function settle(state: GameState): GameState {
     playerHand: player.hand,
     outcome: settlement.outcome,
     delta: settlement.delta,
-    chipsAfter: settlement.chips,
+    chipsAfter: settlement.playerChips,
   };
   return {
     ...state,
-    chips: settlement.chips,
+    chips: settlement.playerChips,
+    dealerChips: settlement.dealerChips,
     settlement,
     history: [...state.history, record],
-    phase: settlement.chips <= 0 ? "gameOver" : "result",
+    phase: nextPhaseAfterSettle(settlement.playerChips, settlement.dealerChips),
   };
+}
+
+/** 1 ラウンドで減るのは片方だけなので、両方が同時に 0 になることはない。 */
+function nextPhaseAfterSettle(chips: number, dealerChips: number): Phase {
+  if (chips <= 0) {
+    return "gameOver";
+  }
+  if (dealerChips <= 0) {
+    return "battleWon";
+  }
+  return "result";
 }
