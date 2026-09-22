@@ -52,6 +52,11 @@ body {
   margin: 0;
 }
 
+/* 2 列に並ぶと 5 つめが 1 列だけ余るので、行いっぱいに広げる */
+.scoreboard > div:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .scoreboard > div {
   padding: 0.5rem 0.75rem;
   background-color: var(--color-surface);
