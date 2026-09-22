@@ -1,12 +1,12 @@
 import type { GameState } from "../domain/game";
-import { latestRoll, MAX_ROLLS, MIN_BET } from "../domain/game";
+import { latestRoll, maxBet, MAX_ROLLS, MIN_BET } from "../domain/game";
 import { handLabel } from "../domain/hand";
 
 /** 今この画面で何が起きているか / 次に何をすればよいかを 1 文で返す。 */
 export function statusMessage(state: GameState): string {
   switch (state.phase) {
     case "betting":
-      return `掛け金を決めてください（${MIN_BET}〜${state.chips}）`;
+      return `掛け金を決めてください（${MIN_BET}〜${maxBet(state.chips, state.dealerChips)}）`;
 
     case "dealerTurn": {
       // 親は役が付いた時点で子の手番に移るため、このフェーズに留まるのは役なしのときだけ。
@@ -34,6 +34,11 @@ export function statusMessage(state: GameState): string {
 
     case "result":
       return state.settlement?.reason ?? "清算しました";
+
+    case "battleWon":
+      return state.settlement
+        ? `${state.settlement.reason}。親のチップが尽きました。撃破！`
+        : "親のチップが尽きました。撃破！";
 
     case "gameOver":
       return state.settlement

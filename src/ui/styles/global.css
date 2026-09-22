@@ -44,14 +44,15 @@ body {
   color: var(--color-accent);
 }
 
+/* 項目は 4 つ。広い幅では 1 行、狭い幅では 2 行 2 列に並べる */
 .scoreboard {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   gap: 0.5rem;
   margin: 0;
 }
 
 .scoreboard > div {
-  flex: 1;
   padding: 0.5rem 0.75rem;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);

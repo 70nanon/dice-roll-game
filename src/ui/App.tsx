@@ -5,6 +5,7 @@ import {
   createGameReducer,
   createInitialState,
   INITIAL_CHIPS,
+  maxBet,
   mustReroll,
 } from "../domain/game";
 import { summarizeMatch } from "../domain/stats";
@@ -45,8 +46,8 @@ export function App({ random = Math.random }: AppProps = {}) {
 
   const roundResult = state.settlement;
   const statusClass = roundResult ? `status status--${roundResult.outcome}` : "status";
-  const matchFinished = state.phase === "gameOver";
-  const summary = matchFinished
+  const battleFinished = state.phase === "battleWon" || state.phase === "gameOver";
+  const summary = battleFinished
     ? summarizeMatch(state.history, INITIAL_CHIPS)
     : null;
 
@@ -56,8 +57,12 @@ export function App({ random = Math.random }: AppProps = {}) {
         <h1 className="app__title">チンチロ</h1>
         <dl className="scoreboard">
           <div>
-            <dt>チップ</dt>
+            <dt>自分のチップ</dt>
             <dd>{state.chips}</dd>
+          </div>
+          <div>
+            <dt>親のチップ</dt>
+            <dd>{state.dealerChips}</dd>
           </div>
           <div>
             <dt>ラウンド</dt>
@@ -95,7 +100,7 @@ export function App({ random = Math.random }: AppProps = {}) {
       <div className="app__actions">
         {state.phase === "betting" && (
           <BetForm
-            chips={state.chips}
+            max={maxBet(state.chips, state.dealerChips)}
             onSubmit={(bet) => dispatch({ type: "placeBet", bet })}
           />
         )}
@@ -132,7 +137,7 @@ export function App({ random = Math.random }: AppProps = {}) {
           </button>
         )}
 
-        {matchFinished && (
+        {battleFinished && (
           <button
             className="button button--primary"
             type="button"

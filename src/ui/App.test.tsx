@@ -87,14 +87,15 @@ describe("App", () => {
   it("最初はベット画面を出す", () => {
     render(<App random={diceRolls()} />);
     expect(screen.getByRole("heading", { name: "チンチロ" })).toBeDefined();
-    expect(scoreboard("チップ")).toBe("100");
+    expect(scoreboard("自分のチップ")).toBe("100");
+    expect(scoreboard("親のチップ")).toBe("100");
     expect(
       screen.getByText("掛け金を決めてください（1〜100）"),
     ).toBeDefined();
     expect(button("賭ける").getAttribute("disabled")).toBeNull();
   });
 
-  it("所持チップを超える掛け金では賭けられない", () => {
+  it("賭けられる上限を超えると賭けられない", () => {
     render(<App random={diceRolls()} />);
     fireEvent.change(screen.getByLabelText("掛け金"), { target: { value: "500" } });
     expect(screen.getByText("1〜100 の整数を入力してください")).toBeDefined();
@@ -169,7 +170,8 @@ describe("App", () => {
       screen.getByText("あなたのピンゾロが親の2の目に勝ち（5倍）"),
     ).toBeDefined();
     expect(screen.getByText("+50 チップ")).toBeDefined();
-    expect(scoreboard("チップ")).toBe("150");
+    expect(scoreboard("自分のチップ")).toBe("150");
+    expect(scoreboard("親のチップ")).toBe("50");
   });
 
   it("次のラウンドで盤面が戻る", async () => {
@@ -181,7 +183,8 @@ describe("App", () => {
 
     fireEvent.click(button("次のラウンド"));
 
-    expect(screen.getByText("掛け金を決めてください（1〜150）")).toBeDefined();
+    // 上限は自分（150）ではなく、親の残り（50）で決まる
+    expect(screen.getByText("掛け金を決めてください（1〜50）")).toBeDefined();
     expect(screen.getAllByText("まだ振っていません")).toHaveLength(2);
   });
 
@@ -193,7 +196,7 @@ describe("App", () => {
     fireEvent.click(button("この目で勝負"));
 
     expect(screen.getByText(/チップが尽きました/)).toBeDefined();
-    expect(scoreboard("チップ")).toBe("0");
+    expect(scoreboard("自分のチップ")).toBe("0");
 
     expect(screen.getByRole("heading", { name: "戦績" })).toBeDefined();
     expect(summaryStat("勝ち / 負け / あいこ")).toBe("0 / 1 / 0");
@@ -201,6 +204,29 @@ describe("App", () => {
 
     fireEvent.click(button("もう一度遊ぶ"));
     expect(screen.getByText("掛け金を決めてください（1〜100）")).toBeDefined();
+  });
+});
+
+describe("親の撃破", () => {
+  it("親のチップを削り切ると撃破になり、戦績を出して再開できる", async () => {
+    // 親のチップ 100 に対して 100 を賭けて勝つ
+    render(<App random={diceRolls(NORMAL_2, NORMAL_5)} />);
+    bet("100");
+    await advanceAutoRoll();
+    fireEvent.click(button("振る"));
+    fireEvent.click(button("この目で勝負"));
+
+    expect(screen.getByText(/親のチップが尽きました。撃破！/)).toBeDefined();
+    expect(scoreboard("自分のチップ")).toBe("200");
+    expect(scoreboard("親のチップ")).toBe("0");
+    expect(screen.queryByRole("button", { name: "次のラウンド" })).toBeNull();
+
+    expect(summaryStat("勝ち / 負け / あいこ")).toBe("1 / 0 / 0");
+    expect(summaryStat("収支")).toBe("+100");
+
+    fireEvent.click(button("もう一度遊ぶ"));
+    expect(scoreboard("自分のチップ")).toBe("100");
+    expect(scoreboard("親のチップ")).toBe("100");
   });
 });
 
