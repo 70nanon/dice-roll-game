@@ -3,8 +3,13 @@ import type { Hand } from "./hand";
 import type { Outcome } from "./payout";
 import { settleRound } from "./payout";
 
-const settle = (playerHand: Hand, dealerHand: Hand, bet = 10, chips = 100) =>
-  settleRound({ playerHand, dealerHand, bet, chips });
+const settle = (
+  playerHand: Hand,
+  dealerHand: Hand,
+  bet = 10,
+  playerChips = 100,
+  dealerChips = 100,
+) => settleRound({ playerHand, dealerHand, bet, playerChips, dealerChips });
 
 describe("settleRound", () => {
   const cases: ReadonlyArray<{
@@ -102,7 +107,9 @@ describe("settleRound", () => {
     expect(settlement.outcome).toBe(outcome);
     expect(settlement.multiplier).toBe(multiplier);
     expect(settlement.delta).toBe(delta);
-    expect(settlement.chips).toBe(100 + delta);
+    expect(settlement.playerChips).toBe(100 + delta);
+    // 動いた分はそのまま相手から出入りする
+    expect(settlement.dealerChips).toBe(100 - delta);
   });
 
   it("同じ役・同じ目はあいこでチップが動かない", () => {
@@ -110,29 +117,36 @@ describe("settleRound", () => {
     expect(settlement.outcome).toBe("draw");
     expect(settlement.multiplier).toBe(0);
     expect(settlement.delta).toBe(0);
-    expect(settlement.chips).toBe(100);
+    expect(settlement.playerChips).toBe(100);
+    expect(settlement.dealerChips).toBe(100);
   });
 
-  it("支払いが所持チップを超える場合は全額までにする", () => {
-    const settlement = settleRound({
-      playerHand: { kind: "hifumi" },
-      dealerHand: { kind: "normal", pip: 1 },
-      bet: 20,
-      chips: 20,
-    });
+  it("自分の支払いは所持チップまでにする", () => {
+    const settlement = settle({ kind: "hifumi" }, { kind: "normal", pip: 1 }, 20, 20);
     expect(settlement.delta).toBe(-20);
-    expect(settlement.chips).toBe(0);
+    expect(settlement.playerChips).toBe(0);
+    expect(settlement.dealerChips).toBe(120);
   });
 
-  it("チップがマイナスにならない", () => {
-    const settlement = settleRound({
-      playerHand: { kind: "normal", pip: 1 },
-      dealerHand: { kind: "pinzoro" },
-      bet: 5,
-      chips: 3,
-    });
-    expect(settlement.chips).toBe(0);
+  it("自分のチップがマイナスにならない", () => {
+    const settlement = settle({ kind: "normal", pip: 1 }, { kind: "pinzoro" }, 5, 3);
     expect(settlement.delta).toBe(-3);
+    expect(settlement.playerChips).toBe(0);
+  });
+
+  it("親の支払いは親の所持チップまでにする", () => {
+    // 5 倍で 50 取れるところ、親は 30 しか持っていない
+    const settlement = settle({ kind: "pinzoro" }, { kind: "menashi" }, 10, 100, 30);
+    expect(settlement.multiplier).toBe(5);
+    expect(settlement.delta).toBe(30);
+    expect(settlement.playerChips).toBe(130);
+    expect(settlement.dealerChips).toBe(0);
+  });
+
+  it("親のチップがマイナスにならない", () => {
+    const settlement = settle({ kind: "normal", pip: 6 }, { kind: "normal", pip: 1 }, 10, 100, 4);
+    expect(settlement.delta).toBe(4);
+    expect(settlement.dealerChips).toBe(0);
   });
 
   it("勝敗の理由を日本語で返す", () => {

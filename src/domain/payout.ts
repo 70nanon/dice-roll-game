@@ -15,7 +15,8 @@ export type Settlement = {
   /** 実際に動いたチップ（プレイヤー視点の増減） */
   readonly delta: number;
   /** 清算後のチップ */
-  readonly chips: number;
+  readonly playerChips: number;
+  readonly dealerChips: number;
   readonly reason: string;
 };
 
@@ -23,19 +24,21 @@ export type SettleInput = {
   readonly playerHand: Hand;
   readonly dealerHand: Hand;
   readonly bet: number;
-  readonly chips: number;
+  readonly playerChips: number;
+  readonly dealerChips: number;
 };
 
 /**
  * 役を比較して清算する。
  * 倍率は「勝者の役の倍率」と「敗者が負う倍率」の大きい方を採用する。
- * 支払いは所持チップを上限とし、マイナスにはしない。
+ * 支払いは敗者の所持チップを上限とし、どちらもマイナスにはしない。
  */
 export function settleRound({
   playerHand,
   dealerHand,
   bet,
-  chips,
+  playerChips,
+  dealerChips,
 }: SettleInput): Settlement {
   const comparison = compareHands(playerHand, dealerHand);
 
@@ -44,7 +47,8 @@ export function settleRound({
       outcome: "draw",
       multiplier: 0,
       delta: 0,
-      chips,
+      playerChips,
+      dealerChips,
       reason: `どちらも${handLabel(playerHand)}であいこ`,
     };
   }
@@ -53,24 +57,26 @@ export function settleRound({
   const winner = playerWon ? playerHand : dealerHand;
   const loser = playerWon ? dealerHand : playerHand;
   const multiplier = Math.max(winnerMultiplier(winner), loserMultiplier(loser));
-  const amount = bet * multiplier;
+  // 払えない分は取れない。払い切った側は 0 になる。
+  const paid = Math.min(bet * multiplier, playerWon ? dealerChips : playerChips);
 
   if (playerWon) {
     return {
       outcome: "playerWin",
       multiplier,
-      delta: amount,
-      chips: chips + amount,
+      delta: paid,
+      playerChips: playerChips + paid,
+      dealerChips: dealerChips - paid,
       reason: `あなたの${handLabel(playerHand)}が親の${handLabel(dealerHand)}に勝ち（${multiplier}倍）`,
     };
   }
 
-  const paid = Math.min(amount, chips);
   return {
     outcome: "dealerWin",
     multiplier,
     delta: -paid,
-    chips: chips - paid,
+    playerChips: playerChips - paid,
+    dealerChips: dealerChips + paid,
     reason: `親の${handLabel(dealerHand)}にあなたの${handLabel(playerHand)}が負け（${multiplier}倍）`,
   };
 }

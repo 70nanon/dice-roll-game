@@ -8,6 +8,7 @@ import {
   createInitialState,
   isValidBet,
   latestRoll,
+  maxBet,
   mustReroll,
 } from "./game";
 import type { Dice, RandomSource } from "./dice";
@@ -28,13 +29,19 @@ const PINZORO: Dice = [1, 1, 1];
 
 describe("isValidBet", () => {
   it("1 以上・所持チップ以下の整数だけ受け付ける", () => {
-    expect(isValidBet(100, 1)).toBe(true);
-    expect(isValidBet(100, 100)).toBe(true);
-    expect(isValidBet(100, 0)).toBe(false);
-    expect(isValidBet(100, -5)).toBe(false);
-    expect(isValidBet(100, 101)).toBe(false);
-    expect(isValidBet(100, 1.5)).toBe(false);
-    expect(isValidBet(100, Number.NaN)).toBe(false);
+    expect(isValidBet(100, 100, 1)).toBe(true);
+    expect(isValidBet(100, 100, 100)).toBe(true);
+    expect(isValidBet(100, 100, 0)).toBe(false);
+    expect(isValidBet(100, 100, -5)).toBe(false);
+    expect(isValidBet(100, 100, 101)).toBe(false);
+    expect(isValidBet(100, 100, 1.5)).toBe(false);
+    expect(isValidBet(100, 100, Number.NaN)).toBe(false);
+  });
+
+  it("親が払えない額は賭けられない", () => {
+    expect(maxBet(100, 30)).toBe(30);
+    expect(isValidBet(100, 30, 30)).toBe(true);
+    expect(isValidBet(100, 30, 31)).toBe(false);
   });
 });
 
@@ -217,7 +224,7 @@ describe("ラウンドの繰り返し", () => {
   it("1 ラウンドをテストだけで最後まで進められる", () => {
     const reducer = createGameReducer(diceRolls(MENASHI, NORMAL_5, MENASHI, PINZORO));
     let state = createInitialState();
-    state = reducer(state, { type: "placeBet", bet: 20 });
+    state = reducer(state, { type: "placeBet", bet: 10 });
     while (state.phase === "dealerTurn") {
       state = reducer(state, { type: "roll" });
     }
@@ -229,7 +236,8 @@ describe("ラウンドの繰り返し", () => {
     expect(latestRoll(state.dealer)?.hand).toEqual({ kind: "normal", pip: 5 });
     expect(latestRoll(state.player)?.hand).toEqual({ kind: "pinzoro" });
     expect(state.phase).toBe("result");
-    expect(state.chips).toBe(200);
+    expect(state.chips).toBe(150);
+    expect(state.dealerChips).toBe(50);
   });
 });
 
@@ -271,6 +279,71 @@ describe("ラウンドの履歴", () => {
     expect(state.history.map((record) => record.round)).toEqual([1, 2]);
     expect(state.history.map((record) => record.delta)).toEqual([10, -20]);
     expect(state.chips).toBe(90);
+  });
+});
+
+describe("親（CPU）の所持金と撃破", () => {
+  it("清算した分だけ親のチップが動く", () => {
+    const state = play(diceRolls(NORMAL_2, NORMAL_5), [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+    ]);
+    expect(state.chips).toBe(110);
+    expect(state.dealerChips).toBe(90);
+  });
+
+  it("親のチップを削り切ったら撃破になる", () => {
+    const state = play(
+      diceRolls(NORMAL_2, NORMAL_5),
+      [
+        { type: "placeBet", bet: 10 },
+        { type: "roll" },
+        { type: "roll" },
+        { type: "stand" },
+      ],
+      createInitialState(100, 10),
+    );
+    expect(state.dealerChips).toBe(0);
+    expect(state.phase).toBe("battleWon");
+    expect(state.chips).toBe(110);
+  });
+
+  it("親が払えない分は取れない", () => {
+    const state = play(
+      diceRolls(NORMAL_2, PINZORO),
+      [
+        { type: "placeBet", bet: 10 },
+        { type: "roll" },
+        { type: "roll" },
+        { type: "stand" },
+      ],
+      createInitialState(100, 10),
+    );
+    // ピンゾロは 5 倍だが、親は 10 しか持っていない
+    expect(state.settlement?.multiplier).toBe(5);
+    expect(state.settlement?.delta).toBe(10);
+    expect(state.chips).toBe(110);
+    expect(state.phase).toBe("battleWon");
+  });
+
+  it("撃破後は振れず、やり直すと両者のチップが戻る", () => {
+    const won = play(
+      diceRolls(NORMAL_2, NORMAL_5),
+      [
+        { type: "placeBet", bet: 10 },
+        { type: "roll" },
+        { type: "roll" },
+        { type: "stand" },
+      ],
+      createInitialState(100, 10),
+    );
+    expect(canRoll(won)).toBe(false);
+    expect(play(diceRolls(), [{ type: "roll" }], won)).toEqual(won);
+    expect(play(diceRolls(), [{ type: "restart" }], won)).toEqual(
+      createInitialState(),
+    );
   });
 });
 
