@@ -6,10 +6,17 @@ import type { Outcome, Settlement } from "./payout";
 import { settleRound } from "./payout";
 
 export const INITIAL_CHIPS = 100;
-/** 親（CPU）の初期チップ。これを削り切ったら撃破。 */
+/** Battle 1 の親（CPU）のチップ。これを削り切ったら撃破。 */
 export const DEALER_INITIAL_CHIPS = 100;
+/** Battle が 1 つ進むごとに増える親のチップ。強さの基準はこれだけ。 */
+export const DEALER_CHIPS_PER_BATTLE = 50;
 export const MAX_ROLLS = 3;
 export const MIN_BET = 1;
+
+/** Battle 番号に対する親の初期チップ。Battle 1 は 100 で、以降 50 ずつ増える。 */
+export function dealerChipsForBattle(battle: number): number {
+  return DEALER_INITIAL_CHIPS + DEALER_CHIPS_PER_BATTLE * (battle - 1);
+}
 
 export type Phase =
   | "betting"
@@ -54,6 +61,9 @@ export type RoundRecord = {
 
 export type GameState = {
   readonly phase: Phase;
+  /** 何人目の親と戦っているか。1 から始まり、撃破するたびに増える */
+  readonly battle: number;
+  /** この Battle の中でのラウンド番号。Battle をまたぐと 1 に戻る */
   readonly round: number;
   /** 自分のチップ */
   readonly chips: number;
@@ -74,6 +84,8 @@ export type GameAction =
   /** この目で勝負する */
   | { readonly type: "stand" }
   | { readonly type: "nextRound" }
+  /** 撃破したので次の親と戦う */
+  | { readonly type: "nextBattle" }
   | { readonly type: "restart" };
 
 const EMPTY_ROLL: RollState = {
@@ -84,9 +96,11 @@ const EMPTY_ROLL: RollState = {
 export function createInitialState(
   chips: number = INITIAL_CHIPS,
   dealerChips: number = DEALER_INITIAL_CHIPS,
+  battle: number = 1,
 ): GameState {
   return {
     phase: "betting",
+    battle,
     round: 1,
     chips,
     dealerChips,
@@ -212,8 +226,17 @@ export function createGameReducer(
         };
       }
 
+      case "nextBattle": {
+        if (state.phase !== "battleWon") {
+          return state;
+        }
+        const battle = state.battle + 1;
+        // 持ち越すのはチップだけ。ラウンド番号と履歴は親ごとに数え直す。
+        return createInitialState(state.chips, dealerChipsForBattle(battle), battle);
+      }
+
       case "restart": {
-        if (state.phase !== "gameOver" && state.phase !== "battleWon") {
+        if (state.phase !== "gameOver") {
           return state;
         }
         return createInitialState();

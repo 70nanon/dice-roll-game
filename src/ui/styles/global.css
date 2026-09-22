@@ -44,12 +44,17 @@ body {
   color: var(--color-accent);
 }
 
-/* 項目は 4 つ。広い幅では 1 行、狭い幅では 2 行 2 列に並べる */
+/* 項目は 5 つ。入る幅だけ 1 行に並べ、狭い幅では折り返して 2 列にする */
 .scoreboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   gap: 0.5rem;
   margin: 0;
+}
+
+/* 2 列に並ぶと 5 つめが 1 列だけ余るので、行いっぱいに広げる */
+.scoreboard > div:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 .scoreboard > div {

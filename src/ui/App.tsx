@@ -4,14 +4,13 @@ import {
   canStand,
   createGameReducer,
   createInitialState,
-  INITIAL_CHIPS,
   maxBet,
   mustReroll,
 } from "../domain/game";
-import { summarizeMatch } from "../domain/stats";
+import { summarizeBattle } from "../domain/stats";
+import { BattleSummaryPanel } from "./components/BattleSummaryPanel";
 import { BetForm } from "./components/BetForm";
 import { HistoryList } from "./components/HistoryList";
-import { MatchSummaryPanel } from "./components/MatchSummaryPanel";
 import { RollPanel } from "./components/RollPanel";
 import { statusMessage } from "./statusMessage";
 
@@ -47,9 +46,7 @@ export function App({ random = Math.random }: AppProps = {}) {
   const roundResult = state.settlement;
   const statusClass = roundResult ? `status status--${roundResult.outcome}` : "status";
   const battleFinished = state.phase === "battleWon" || state.phase === "gameOver";
-  const summary = battleFinished
-    ? summarizeMatch(state.history, INITIAL_CHIPS)
-    : null;
+  const summary = battleFinished ? summarizeBattle(state.history, state.chips) : null;
 
   return (
     <main className="app">
@@ -63,6 +60,10 @@ export function App({ random = Math.random }: AppProps = {}) {
           <div>
             <dt>親のチップ</dt>
             <dd>{state.dealerChips}</dd>
+          </div>
+          <div>
+            <dt>Battle</dt>
+            <dd>{state.battle}</dd>
           </div>
           <div>
             <dt>ラウンド</dt>
@@ -137,7 +138,17 @@ export function App({ random = Math.random }: AppProps = {}) {
           </button>
         )}
 
-        {battleFinished && (
+        {state.phase === "battleWon" && (
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={() => dispatch({ type: "nextBattle" })}
+          >
+            次の親と戦う
+          </button>
+        )}
+
+        {state.phase === "gameOver" && (
           <button
             className="button button--primary"
             type="button"
@@ -148,7 +159,7 @@ export function App({ random = Math.random }: AppProps = {}) {
         )}
       </div>
 
-      {summary && <MatchSummaryPanel summary={summary} />}
+      {summary && <BattleSummaryPanel summary={summary} />}
 
       <HistoryList history={state.history} />
     </main>

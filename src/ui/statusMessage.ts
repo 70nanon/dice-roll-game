@@ -1,5 +1,11 @@
 import type { GameState } from "../domain/game";
-import { latestRoll, maxBet, MAX_ROLLS, MIN_BET } from "../domain/game";
+import {
+  dealerChipsForBattle,
+  latestRoll,
+  maxBet,
+  MAX_ROLLS,
+  MIN_BET,
+} from "../domain/game";
 import { handLabel } from "../domain/hand";
 
 /** 今この画面で何が起きているか / 次に何をすればよいかを 1 文で返す。 */
@@ -35,14 +41,15 @@ export function statusMessage(state: GameState): string {
     case "result":
       return state.settlement?.reason ?? "清算しました";
 
-    case "battleWon":
-      return state.settlement
-        ? `${state.settlement.reason}。親のチップが尽きました。撃破！`
-        : "親のチップが尽きました。撃破！";
+    case "battleWon": {
+      // 次の親は所持金が多い。チップは持ち越すので、どこまで来たかと次の相手を添える。
+      const won = `Battle ${state.battle} の親を撃破！次の親は ${dealerChipsForBattle(state.battle + 1)} 持っています`;
+      return state.settlement ? `${state.settlement.reason}。${won}` : won;
+    }
 
-    case "gameOver":
-      return state.settlement
-        ? `${state.settlement.reason}。チップが尽きました`
-        : "チップが尽きました";
+    case "gameOver": {
+      const over = `チップが尽きました（Battle ${state.battle} で終了）`;
+      return state.settlement ? `${state.settlement.reason}。${over}` : over;
+    }
   }
 }
