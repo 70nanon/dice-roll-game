@@ -35,9 +35,6 @@ export function statusMessage(state: GameState): string {
     case "result":
       return state.settlement?.reason ?? "清算しました";
 
-    case "matchOver":
-      return `全 ${state.round} ラウンド終了。チップは ${state.chips} です`;
-
     case "gameOver":
       return state.settlement
         ? `${state.settlement.reason}。チップが尽きました`

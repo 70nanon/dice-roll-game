@@ -3,11 +3,9 @@ import { diceRolls } from "../test/diceSequence";
 import type { GameAction, GameState } from "./game";
 import {
   canRoll,
-  canSetMatchLength,
   canStand,
   createGameReducer,
   createInitialState,
-  isFinalRound,
   isValidBet,
   latestRoll,
   mustReroll,
@@ -273,90 +271,6 @@ describe("ラウンドの履歴", () => {
     expect(state.history.map((record) => record.round)).toEqual([1, 2]);
     expect(state.history.map((record) => record.delta)).toEqual([10, -20]);
     expect(state.chips).toBe(90);
-  });
-});
-
-describe("ラウンド数（試合制）", () => {
-  it("既定は無制限で、規定ラウンドでは終わらない", () => {
-    const initial = createInitialState();
-    expect(initial.matchLength).toBeNull();
-    expect(isFinalRound(initial)).toBe(false);
-  });
-
-  it("1 ラウンドも終えていなければラウンド数を変えられる", () => {
-    const state = play(diceRolls(), [{ type: "setMatchLength", matchLength: 5 }]);
-    expect(state.matchLength).toBe(5);
-    expect(canSetMatchLength(state)).toBe(true);
-  });
-
-  it("ラウンドが終わったあとはラウンド数を変えられない", () => {
-    const afterRound = play(diceRolls(NORMAL_2, NORMAL_5), [
-      { type: "placeBet", bet: 10 },
-      { type: "roll" },
-      { type: "roll" },
-      { type: "stand" },
-      { type: "nextRound" },
-    ]);
-    expect(canSetMatchLength(afterRound)).toBe(false);
-    expect(
-      play(diceRolls(), [{ type: "setMatchLength", matchLength: 10 }], afterRound),
-    ).toEqual(afterRound);
-  });
-
-  it("規定ラウンドを終えたら試合終了になる", () => {
-    const state = play(
-      diceRolls(NORMAL_2, NORMAL_5, NORMAL_2, NORMAL_5),
-      [
-        { type: "placeBet", bet: 10 },
-        { type: "roll" },
-        { type: "roll" },
-        { type: "stand" },
-        { type: "nextRound" },
-        { type: "placeBet", bet: 10 },
-        { type: "roll" },
-        { type: "roll" },
-        { type: "stand" },
-        { type: "nextRound" },
-      ],
-      createInitialState(100, 2),
-    );
-    expect(state.phase).toBe("matchOver");
-    expect(state.round).toBe(2);
-    expect(state.history).toHaveLength(2);
-    // 試合結果の画面で見せるので、最後の清算は残したまま
-    expect(state.settlement).not.toBeNull();
-  });
-
-  it("試合終了から再開するとラウンド数の設定を引き継ぐ", () => {
-    const over = play(
-      diceRolls(NORMAL_2, NORMAL_5),
-      [
-        { type: "placeBet", bet: 10 },
-        { type: "roll" },
-        { type: "roll" },
-        { type: "stand" },
-        { type: "nextRound" },
-      ],
-      createInitialState(100, 1),
-    );
-    expect(over.phase).toBe("matchOver");
-    const restarted = play(diceRolls(), [{ type: "restart" }], over);
-    expect(restarted).toEqual(createInitialState(100, 1));
-  });
-
-  it("規定ラウンドの前に破産したらゲームオーバーを優先する", () => {
-    const state = play(
-      diceRolls(PINZORO, NORMAL_2),
-      [
-        { type: "placeBet", bet: 10 },
-        { type: "roll" },
-        { type: "roll" },
-        { type: "stand" },
-      ],
-      createInitialState(10, 5),
-    );
-    expect(state.phase).toBe("gameOver");
-    expect(state.history).toHaveLength(1);
   });
 });
 

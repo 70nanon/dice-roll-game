@@ -9,18 +9,11 @@ export const INITIAL_CHIPS = 100;
 export const MAX_ROLLS = 3;
 export const MIN_BET = 1;
 
-/** 試合のラウンド数。null は無制限（破産するまで）。 */
-export type MatchLength = number | null;
-
-export const MATCH_LENGTH_OPTIONS: readonly MatchLength[] = [null, 5, 10];
-
 export type Phase =
   | "betting"
   | "dealerTurn"
   | "playerTurn"
   | "result"
-  /** 規定ラウンドを終えた */
-  | "matchOver"
   /** チップが尽きた */
   | "gameOver";
 
@@ -58,7 +51,6 @@ export type RoundRecord = {
 export type GameState = {
   readonly phase: Phase;
   readonly round: number;
-  readonly matchLength: MatchLength;
   readonly chips: number;
   readonly bet: number;
   readonly dealer: RollState;
@@ -69,7 +61,6 @@ export type GameState = {
 };
 
 export type GameAction =
-  | { readonly type: "setMatchLength"; readonly matchLength: MatchLength }
   | { readonly type: "placeBet"; readonly bet: number }
   /** 現在の手番が 3 個振る */
   | { readonly type: "roll" }
@@ -83,14 +74,10 @@ const EMPTY_ROLL: RollState = {
   decided: false,
 };
 
-export function createInitialState(
-  chips: number = INITIAL_CHIPS,
-  matchLength: MatchLength = null,
-): GameState {
+export function createInitialState(chips: number = INITIAL_CHIPS): GameState {
   return {
     phase: "betting",
     round: 1,
-    matchLength,
     chips,
     bet: 0,
     dealer: EMPTY_ROLL,
@@ -98,16 +85,6 @@ export function createInitialState(
     settlement: null,
     history: [],
   };
-}
-
-/** ラウンド数の変更は、1 ラウンドも終えていない間だけ受け付ける。 */
-export function canSetMatchLength(state: GameState): boolean {
-  return state.phase === "betting" && state.history.length === 0;
-}
-
-/** このラウンドで規定数に達するか。 */
-export function isFinalRound(state: GameState): boolean {
-  return state.matchLength !== null && state.round >= state.matchLength;
 }
 
 export function isValidBet(chips: number, bet: number): boolean {
@@ -145,13 +122,6 @@ export function createGameReducer(
 ): (state: GameState, action: GameAction) => GameState {
   return function reducer(state: GameState, action: GameAction): GameState {
     switch (action.type) {
-      case "setMatchLength": {
-        if (!canSetMatchLength(state)) {
-          return state;
-        }
-        return { ...state, matchLength: action.matchLength };
-      }
-
       case "placeBet": {
         if (state.phase !== "betting" || !isValidBet(state.chips, action.bet)) {
           return state;
@@ -206,9 +176,6 @@ export function createGameReducer(
         if (state.phase !== "result") {
           return state;
         }
-        if (isFinalRound(state)) {
-          return { ...state, phase: "matchOver" };
-        }
         return {
           ...state,
           phase: "betting",
@@ -221,11 +188,10 @@ export function createGameReducer(
       }
 
       case "restart": {
-        if (state.phase !== "gameOver" && state.phase !== "matchOver") {
+        if (state.phase !== "gameOver") {
           return state;
         }
-        // ラウンド数の設定は引き継ぐ
-        return createInitialState(INITIAL_CHIPS, state.matchLength);
+        return createInitialState();
       }
     }
   };

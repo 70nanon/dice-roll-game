@@ -195,34 +195,16 @@ describe("App", () => {
     expect(screen.getByText(/チップが尽きました/)).toBeDefined();
     expect(scoreboard("チップ")).toBe("0");
 
+    expect(screen.getByRole("heading", { name: "戦績" })).toBeDefined();
+    expect(summaryStat("勝ち / 負け / あいこ")).toBe("0 / 1 / 0");
+    expect(summaryStat("収支")).toBe("-100");
+
     fireEvent.click(button("もう一度遊ぶ"));
     expect(screen.getByText("掛け金を決めてください（1〜100）")).toBeDefined();
   });
 });
 
-describe("試合の長さと履歴", () => {
-  it("試合の長さを選ぶとラウンド表示に反映される", () => {
-    render(<App random={diceRolls()} />);
-    expect(button("無制限").getAttribute("aria-pressed")).toBe("true");
-    expect(scoreboard("ラウンド")).toBe("1");
-
-    fireEvent.click(button("5 ラウンド"));
-
-    expect(button("5 ラウンド").getAttribute("aria-pressed")).toBe("true");
-    expect(button("無制限").getAttribute("aria-pressed")).toBe("false");
-    expect(scoreboard("ラウンド")).toBe("1 / 5");
-  });
-
-  it("1 ラウンド終えると試合の長さは変えられなくなる", async () => {
-    render(<App random={losingRolls(1)} />);
-    fireEvent.click(button("5 ラウンド"));
-    await playLosingRound("10");
-    fireEvent.click(button("次のラウンド"));
-
-    expect(screen.queryByText("試合の長さ")).toBeNull();
-    expect(scoreboard("ラウンド")).toBe("2 / 5");
-  });
-
+describe("ラウンド履歴", () => {
   it("清算したラウンドが新しい順に履歴へ積まれる", async () => {
     render(<App random={losingRolls(2)} />);
     expect(screen.queryByText("これまでのラウンド")).toBeNull();
@@ -239,52 +221,5 @@ describe("試合の長さと履歴", () => {
     expect(rounds[1]).toContain("自分 1-1-2（2の目）");
     expect(rounds[1]).toContain("親 6-6-5（5の目）");
     expect(rounds[1]).toContain("-10");
-  });
-
-  it("規定ラウンドを終えると戦績を出し、直前のラウンドの増減は消す", async () => {
-    render(<App random={losingRolls(5)} />);
-    fireEvent.click(button("5 ラウンド"));
-
-    for (let round = 1; round < 5; round += 1) {
-      await playLosingRound("10");
-      fireEvent.click(button("次のラウンド"));
-    }
-    await playLosingRound("10");
-
-    // 最終ラウンドの清算後はまだラウンドの結果を出している
-    expect(screen.getByText("-10 チップ")).toBeDefined();
-
-    fireEvent.click(button("試合結果を見る"));
-
-    expect(screen.getByText("全 5 ラウンド終了。チップは 50 です")).toBeDefined();
-    // ラウンドの増減は試合の収支と読み違えられるので、試合終了では出さない
-    expect(screen.queryByText("-10 チップ")).toBeNull();
-
-    expect(screen.getByRole("heading", { name: "戦績" })).toBeDefined();
-    expect(summaryStat("勝ち / 負け / あいこ")).toBe("0 / 5 / 0");
-    expect(summaryStat("収支")).toBe("-50");
-    expect(summaryStat("最終チップ")).toBe("50");
-    expect(
-      within(element(".summary__hands")).getByText("通常の目 5 回"),
-    ).toBeDefined();
-  });
-
-  it("試合をやり直しても選んだラウンド数は残る", async () => {
-    render(<App random={losingRolls(5)} />);
-    fireEvent.click(button("5 ラウンド"));
-
-    for (let round = 1; round < 5; round += 1) {
-      await playLosingRound("10");
-      fireEvent.click(button("次のラウンド"));
-    }
-    await playLosingRound("10");
-    fireEvent.click(button("試合結果を見る"));
-
-    fireEvent.click(button("もう一度遊ぶ"));
-
-    expect(scoreboard("ラウンド")).toBe("1 / 5");
-    expect(scoreboard("チップ")).toBe("100");
-    expect(screen.queryByText("これまでのラウンド")).toBeNull();
-    expect(screen.queryByText("戦績")).toBeNull();
   });
 });
