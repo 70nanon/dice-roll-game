@@ -1,5 +1,5 @@
 import type { GameState } from "../domain/game";
-import { MAX_ROLLS, MIN_BET } from "../domain/game";
+import { latestRoll, MAX_ROLLS, MIN_BET } from "../domain/game";
 import { handLabel } from "../domain/hand";
 
 /** 今この画面で何が起きているか / 次に何をすればよいかを 1 文で返す。 */
@@ -10,7 +10,7 @@ export function statusMessage(state: GameState): string {
 
     case "dealerTurn": {
       // 親は役が付いた時点で子の手番に移るため、このフェーズに留まるのは役なしのときだけ。
-      const { rollsUsed } = state.dealer;
+      const rollsUsed = state.dealer.rolls.length;
       if (rollsUsed === 0) {
         return "親がサイコロを振ります";
       }
@@ -18,14 +18,15 @@ export function statusMessage(state: GameState): string {
     }
 
     case "playerTurn": {
-      const { rollsUsed, hand, decided } = state.player;
+      const rollsUsed = state.player.rolls.length;
       if (rollsUsed === 0) {
         return "あなたの番です。サイコロを振ってください";
       }
       const remaining = MAX_ROLLS - rollsUsed;
-      if (!decided) {
+      if (!state.player.decided) {
         return `役なし。振り直します（残り ${remaining} 回）`;
       }
+      const hand = latestRoll(state.player)?.hand;
       return hand
         ? `${handLabel(hand)}。この目で勝負するか、振り直せます（残り ${remaining} 回）`
         : "この目で勝負するか、振り直せます";

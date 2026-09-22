@@ -200,6 +200,30 @@ body {
   font-weight: 700;
 }
 
+.panel__log {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.panel__logItem {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.panel__logRound {
+  flex: 0 0 3.5rem;
+}
+
+.panel__logDice {
+  flex: 0 0 3.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .app__actions {
   display: flex;
   flex-wrap: wrap;

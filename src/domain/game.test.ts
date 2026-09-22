@@ -9,6 +9,7 @@ import {
   createInitialState,
   isFinalRound,
   isValidBet,
+  latestRoll,
   mustReroll,
 } from "./game";
 import type { Dice, RandomSource } from "./dice";
@@ -61,8 +62,8 @@ describe("親（CPU）のターン", () => {
       { type: "roll" },
       { type: "roll" },
     ]);
-    expect(state.dealer.rollsUsed).toBe(2);
-    expect(state.dealer.hand).toEqual({ kind: "normal", pip: 5 });
+    expect(state.dealer.rolls).toHaveLength(2);
+    expect(latestRoll(state.dealer)?.hand).toEqual({ kind: "normal", pip: 5 });
     expect(state.phase).toBe("playerTurn");
   });
 
@@ -94,7 +95,7 @@ describe("親（CPU）のターン", () => {
       { type: "roll" },
       { type: "roll" },
     ]);
-    expect(state.dealer.hand).toEqual({ kind: "menashi" });
+    expect(latestRoll(state.dealer)?.hand).toEqual({ kind: "menashi" });
     expect(state.dealer.decided).toBe(true);
     expect(state.phase).toBe("playerTurn");
   });
@@ -108,7 +109,7 @@ describe("子（プレイヤー）のターン", () => {
       { type: "roll" },
     ]);
     expect(afterFirst.phase).toBe("playerTurn");
-    expect(afterFirst.player.hand).toEqual({ kind: "normal", pip: 2 });
+    expect(latestRoll(afterFirst.player)?.hand).toEqual({ kind: "normal", pip: 2 });
     expect(canRoll(afterFirst)).toBe(true);
     expect(canStand(afterFirst)).toBe(true);
   });
@@ -143,10 +144,58 @@ describe("子（プレイヤー）のターン", () => {
       { type: "roll" },
       { type: "roll" },
     ]);
-    expect(state.player.rollsUsed).toBe(3);
-    expect(state.player.hand).toEqual({ kind: "menashi" });
+    expect(state.player.rolls).toHaveLength(3);
+    expect(latestRoll(state.player)?.hand).toEqual({ kind: "menashi" });
     expect(state.phase).toBe("result");
     expect(state.chips).toBe(90);
+  });
+});
+
+describe("投ごとの出目履歴", () => {
+  it("振り直しても古い出目が順に残る", () => {
+    const state = play(diceRolls(MENASHI, NORMAL_5, MENASHI, NORMAL_2), [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "roll" },
+    ]);
+    expect(state.dealer.rolls).toEqual([
+      { dice: MENASHI, hand: { kind: "menashi" } },
+      { dice: NORMAL_5, hand: { kind: "normal", pip: 5 } },
+    ]);
+    expect(state.player.rolls).toEqual([
+      { dice: MENASHI, hand: { kind: "menashi" } },
+      { dice: NORMAL_2, hand: { kind: "normal", pip: 2 } },
+    ]);
+  });
+
+  it("次のラウンドに入ると履歴は空に戻る", () => {
+    const state = play(diceRolls(MENASHI, NORMAL_5, NORMAL_2), [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+      { type: "nextRound" },
+    ]);
+    expect(state.dealer.rolls).toEqual([]);
+    expect(state.player.rolls).toEqual([]);
+    expect(latestRoll(state.player)).toBeNull();
+  });
+
+  it("ラウンドの記録には勝負した出目が入る", () => {
+    const state = play(diceRolls(NORMAL_5, MENASHI, NORMAL_2), [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+    ]);
+    // 履歴には最後の 1 投だけが残る（途中の目無しは RollState 側に残る）
+    expect(state.history).toHaveLength(1);
+    expect(state.history[0]?.playerDice).toEqual(NORMAL_2);
+    expect(state.player.rolls).toHaveLength(2);
   });
 });
 
@@ -163,7 +212,7 @@ describe("ラウンドの繰り返し", () => {
     expect(state.round).toBe(2);
     expect(state.bet).toBe(0);
     expect(state.chips).toBe(150);
-    expect(state.player.dice).toBeNull();
+    expect(state.player.rolls).toEqual([]);
     expect(state.settlement).toBeNull();
   });
 
@@ -179,8 +228,8 @@ describe("ラウンドの繰り返し", () => {
     }
     state = reducer(state, { type: "stand" });
 
-    expect(state.dealer.hand).toEqual({ kind: "normal", pip: 5 });
-    expect(state.player.hand).toEqual({ kind: "pinzoro" });
+    expect(latestRoll(state.dealer)?.hand).toEqual({ kind: "normal", pip: 5 });
+    expect(latestRoll(state.player)?.hand).toEqual({ kind: "pinzoro" });
     expect(state.phase).toBe("result");
     expect(state.chips).toBe(200);
   });
