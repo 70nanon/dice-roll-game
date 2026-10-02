@@ -207,24 +207,64 @@ describe("App", () => {
   });
 });
 
-describe("親の撃破", () => {
-  it("親のチップを削り切ると撃破になり、戦績を出して再開できる", async () => {
-    // 親のチップ 100 に対して 100 を賭けて勝つ
-    render(<App random={diceRolls(NORMAL_2, NORMAL_5)} />);
+describe("親の撃破と連戦", () => {
+  /** 親のチップ 100 に対して 100 を賭けて勝ち、1 ラウンドで撃破する。 */
+  async function defeatDealer() {
     bet("100");
     await advanceAutoRoll();
     fireEvent.click(button("振る"));
     fireEvent.click(button("この目で勝負"));
+  }
 
-    expect(screen.getByText(/親のチップが尽きました。撃破！/)).toBeDefined();
+  it("親のチップを削り切ると撃破になり、この Battle の戦績が出る", async () => {
+    render(<App random={diceRolls(NORMAL_2, NORMAL_5)} />);
+    await defeatDealer();
+
+    expect(screen.getByText(/Battle 1 の親を撃破！/)).toBeDefined();
     expect(scoreboard("自分のチップ")).toBe("200");
     expect(scoreboard("親のチップ")).toBe("0");
     expect(screen.queryByRole("button", { name: "次のラウンド" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "もう一度遊ぶ" })).toBeNull();
 
     expect(summaryStat("勝ち / 負け / あいこ")).toBe("1 / 0 / 0");
     expect(summaryStat("収支")).toBe("+100");
+  });
+
+  it("次の親へ進むとチップを持ち越し、親のチップが増える", async () => {
+    render(<App random={diceRolls(NORMAL_2, NORMAL_5)} />);
+    await defeatDealer();
+
+    fireEvent.click(button("次の親と戦う"));
+
+    expect(scoreboard("Battle")).toBe("2");
+    expect(scoreboard("自分のチップ")).toBe("200");
+    expect(scoreboard("親のチップ")).toBe("150");
+    expect(scoreboard("ラウンド")).toBe("1");
+    // 上限は自分（200）ではなく親の 150 で決まる
+    expect(screen.getByText("掛け金を決めてください（1〜150）")).toBeDefined();
+    // 履歴と戦績は親ごとに数え直す
+    expect(screen.queryByText("これまでのラウンド")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "戦績" })).toBeNull();
+  });
+
+  it("持ち越したチップで負けた Battle の戦績は、その Battle の開始チップから数える", async () => {
+    render(<App random={diceRolls(NORMAL_2, NORMAL_5, PINZORO, NORMAL_2)} />);
+    await defeatDealer();
+    fireEvent.click(button("次の親と戦う"));
+
+    // Battle 2 を 200 で始めて、150 を賭けて親のピンゾロに負ける
+    bet("150");
+    await advanceAutoRoll();
+    fireEvent.click(button("振る"));
+    fireEvent.click(button("この目で勝負"));
+
+    expect(screen.getByText(/チップが尽きました（Battle 2 で終了）/)).toBeDefined();
+    expect(scoreboard("自分のチップ")).toBe("0");
+    expect(summaryStat("収支")).toBe("-200");
+    expect(summaryStat("最大チップ")).toBe("200");
 
     fireEvent.click(button("もう一度遊ぶ"));
+    expect(scoreboard("Battle")).toBe("1");
     expect(scoreboard("自分のチップ")).toBe("100");
     expect(scoreboard("親のチップ")).toBe("100");
   });

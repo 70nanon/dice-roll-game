@@ -6,6 +6,7 @@ import {
   canStand,
   createGameReducer,
   createInitialState,
+  dealerChipsForBattle,
   isValidBet,
   latestRoll,
   maxBet,
@@ -26,6 +27,20 @@ const NORMAL_2: Dice = [1, 1, 2];
 const NORMAL_5: Dice = [6, 6, 5];
 const MENASHI: Dice = [1, 2, 4];
 const PINZORO: Dice = [1, 1, 1];
+
+/** 親のチップ 10 を 1 ラウンドで削り切って撃破した状態を作る。 */
+function defeatDealer(): GameState {
+  return play(
+    diceRolls(NORMAL_2, NORMAL_5),
+    [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+    ],
+    createInitialState(100, 10),
+  );
+}
 
 describe("isValidBet", () => {
   it("1 以上・所持チップ以下の整数だけ受け付ける", () => {
@@ -295,16 +310,7 @@ describe("親（CPU）の所持金と撃破", () => {
   });
 
   it("親のチップを削り切ったら撃破になる", () => {
-    const state = play(
-      diceRolls(NORMAL_2, NORMAL_5),
-      [
-        { type: "placeBet", bet: 10 },
-        { type: "roll" },
-        { type: "roll" },
-        { type: "stand" },
-      ],
-      createInitialState(100, 10),
-    );
+    const state = defeatDealer();
     expect(state.dealerChips).toBe(0);
     expect(state.phase).toBe("battleWon");
     expect(state.chips).toBe(110);
@@ -328,20 +334,72 @@ describe("親（CPU）の所持金と撃破", () => {
     expect(state.phase).toBe("battleWon");
   });
 
-  it("撃破後は振れず、やり直すと両者のチップが戻る", () => {
-    const won = play(
-      diceRolls(NORMAL_2, NORMAL_5),
+  it("撃破後は振れない", () => {
+    const won = defeatDealer();
+    expect(canRoll(won)).toBe(false);
+    expect(play(diceRolls(), [{ type: "roll" }], won)).toEqual(won);
+  });
+});
+
+describe("連戦", () => {
+  it("最初は Battle 1 で、親は 100 持っている", () => {
+    const state = createInitialState();
+    expect(state.battle).toBe(1);
+    expect(state.dealerChips).toBe(100);
+  });
+
+  it("Battle が進むほど親のチップが増える", () => {
+    expect(dealerChipsForBattle(1)).toBe(100);
+    expect(dealerChipsForBattle(2)).toBe(150);
+    expect(dealerChipsForBattle(3)).toBe(200);
+  });
+
+  it("撃破後に次の Battle へ進むと、チップだけ持ち越す", () => {
+    const won = defeatDealer();
+    expect(won.chips).toBe(110);
+
+    const next = play(diceRolls(), [{ type: "nextBattle" }], won);
+    expect(next.battle).toBe(2);
+    expect(next.chips).toBe(110);
+    expect(next.dealerChips).toBe(150);
+    expect(next.phase).toBe("betting");
+    expect(next.round).toBe(1);
+    expect(next.history).toEqual([]);
+    expect(next.settlement).toBeNull();
+  });
+
+  it("撃破していないときの nextBattle は無視する", () => {
+    const betting = createInitialState();
+    expect(play(diceRolls(), [{ type: "nextBattle" }], betting)).toEqual(betting);
+
+    const result = play(diceRolls(NORMAL_2, NORMAL_5), [
+      { type: "placeBet", bet: 10 },
+      { type: "roll" },
+      { type: "roll" },
+      { type: "stand" },
+    ]);
+    expect(result.phase).toBe("result");
+    expect(play(diceRolls(), [{ type: "nextBattle" }], result)).toEqual(result);
+  });
+
+  it("撃破では restart せず、ゲームオーバーまで Battle 番号を持ち続ける", () => {
+    const won = defeatDealer();
+    expect(play(diceRolls(), [{ type: "restart" }], won)).toEqual(won);
+
+    const battle2 = play(diceRolls(), [{ type: "nextBattle" }], won);
+    const over = play(
+      diceRolls(PINZORO, NORMAL_2),
       [
-        { type: "placeBet", bet: 10 },
+        { type: "placeBet", bet: 110 },
         { type: "roll" },
         { type: "roll" },
         { type: "stand" },
       ],
-      createInitialState(100, 10),
+      battle2,
     );
-    expect(canRoll(won)).toBe(false);
-    expect(play(diceRolls(), [{ type: "roll" }], won)).toEqual(won);
-    expect(play(diceRolls(), [{ type: "restart" }], won)).toEqual(
+    expect(over.phase).toBe("gameOver");
+    expect(over.battle).toBe(2);
+    expect(play(diceRolls(), [{ type: "restart" }], over)).toEqual(
       createInitialState(),
     );
   });

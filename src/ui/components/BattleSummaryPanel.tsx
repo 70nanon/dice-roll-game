@@ -1,11 +1,11 @@
 import { handKindLabel } from "../../domain/hand";
-import type { MatchSummary } from "../../domain/stats";
+import type { BattleSummary } from "../../domain/stats";
 
-type MatchSummaryPanelProps = {
-  readonly summary: MatchSummary;
+type BattleSummaryPanelProps = {
+  readonly summary: BattleSummary;
 };
 
-export function MatchSummaryPanel({ summary }: MatchSummaryPanelProps) {
+export function BattleSummaryPanel({ summary }: BattleSummaryPanelProps) {
   const { rounds, wins, losses, draws, netDelta, finalChips, maxChips, playerHands } =
     summary;
 

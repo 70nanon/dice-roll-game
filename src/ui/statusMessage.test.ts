@@ -59,7 +59,7 @@ describe("statusMessage", () => {
     );
   });
 
-  it("撃破は親のチップが尽きたことを添える", () => {
+  it("撃破は何人目を倒したかと次の親のチップを添える", () => {
     const reducer = createGameReducer(diceRolls(NORMAL_2, NORMAL_5));
     let state = createInitialState(100, 10);
     state = reducer(state, { type: "placeBet", bet: 10 });
@@ -68,7 +68,7 @@ describe("statusMessage", () => {
     state = reducer(state, { type: "stand" });
     expect(state.phase).toBe("battleWon");
     expect(statusMessage(state)).toBe(
-      "あなたの5の目が親の2の目に勝ち（1倍）。親のチップが尽きました。撃破！",
+      "あなたの5の目が親の2の目に勝ち（1倍）。Battle 1 の親を撃破！次の親は 150 持っています",
     );
   });
 
@@ -81,7 +81,7 @@ describe("statusMessage", () => {
     state = reducer(state, { type: "stand" });
     expect(state.phase).toBe("gameOver");
     expect(statusMessage(state)).toBe(
-      "親の5の目にあなたの2の目が負け（1倍）。チップが尽きました",
+      "親の5の目にあなたの2の目が負け（1倍）。チップが尽きました（Battle 1 で終了）",
     );
   });
 });
